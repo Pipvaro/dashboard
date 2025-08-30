@@ -83,7 +83,7 @@ const LoginPage = () => {
           </Button>
         </div>
       </div>
-      <div className="w-1/2 bg-blue-500 hidden md:block">
+      <div className="w-1/2 hidden md:block">
         <Image
           src={"/assets/login-image-3.png"}
           alt="login-image"
