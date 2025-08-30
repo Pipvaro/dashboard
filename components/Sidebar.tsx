@@ -1,3 +1,5 @@
+"use client"
+
 import { cn } from "@/lib/utils";
 import { Contact, LayoutDashboard, Settings, SlidersVertical } from "lucide-react";
 import Image from "next/image";
