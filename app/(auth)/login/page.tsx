@@ -58,7 +58,7 @@ const LoginPage = () => {
       </div>
       <div className="w-1/2 hidden md:block">
         <Image
-          src={"/assets/login-image-4.png"}
+          src={"/assets/login-image-9.png"}
           alt="login-image"
           width={1908}
           height={1433}
