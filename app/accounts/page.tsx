@@ -14,19 +14,19 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const url = await absoluteUrl("/api/my-accounts");
-  const cookie = cookies().toString();
+
+  const cookieStore = await cookies(); // <-- await!
+  const cookieHeader = cookieStore
+    .getAll()
+    .map(({ name, value }) => `${name}=${value}`)
+    .join("; ");
 
   const res = await fetch(url, {
     cache: "no-store",
-    headers: { cookie },
+    headers: { cookie: cookieHeader }, // <-- Cookies weiterreichen
   });
 
-  if (res.status === 401) {
-    redirect(`/login?next=/accounts`);
-  }
-
-  const data = await res.json();
-  const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
+  const { accounts } = await res.json();
 
   return (
     <div className="w-full h-screen flex">
