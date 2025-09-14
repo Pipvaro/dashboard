@@ -9,6 +9,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import { Menu } from "lucide-react";
+import MobileNav from "@/components/MobileNav";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +89,7 @@ export default async function Page({
             width={250}
             className="w-32 md:hidden block"
           />
-          <Menu className="text-[#d3d5f0] hover:bg-gray-700/30 rounded-full block md:hidden" />
+          <MobileNav />
         </div>
 
         <div className="px-6 pt-6 flex items-center justify-between">

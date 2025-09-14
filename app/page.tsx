@@ -1,5 +1,6 @@
 "use client";
 
+import MobileNav from "@/components/MobileNav";
 import Sidebar from "@/components/Sidebar";
 import { Menu } from "lucide-react";
 import Image from "next/image";
@@ -18,7 +19,7 @@ export default function Home() {
             width={250}
             className="w-32 md:hidden block"
           />
-          <Menu className="text-[#d3d5f0] hover:bg-gray-700/30 rounded-full block md:hidden" />
+          <MobileNav />
         </div>
         {/* Content */}
       </main>

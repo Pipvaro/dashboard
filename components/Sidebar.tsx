@@ -8,16 +8,17 @@ import {
   LayoutDashboard,
   Settings,
   SlidersVertical,
+  Server, // für "Collectors"
 } from "lucide-react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import React from "react";
 
 type User = {
   first_name: string;
   last_name: string;
   email: string;
+  role?: string; // <-- wichtig für Admin
 };
 
 const Sidebar = () => {
@@ -27,7 +28,8 @@ const Sidebar = () => {
     user: User | null;
     loading: boolean;
   };
-  if (loading) return null;
+
+  const isAdmin = (user?.role || "").toLowerCase() === "admin";
 
   async function handleLogout() {
     try {
@@ -41,6 +43,7 @@ const Sidebar = () => {
 
   return (
     <nav className="w-full max-w-1/5 h-screen border-r border-gray-700/50 hidden md:flex flex-col justify-between">
+      {/* Header */}
       <div>
         <div className="py-3 border-b px-4 border-gray-700/50 h-20 flex justify-between items-center">
           <Image
@@ -61,6 +64,8 @@ const Sidebar = () => {
             Operational
           </span>
         </div>
+
+        {/* Haupt-Navigation */}
         <div className="w-full px-4 pt-4 space-y-4">
           <div
             className={cn(
@@ -74,6 +79,7 @@ const Sidebar = () => {
               Dashboard
             </p>
           </div>
+
           <div
             className={cn(
               "w-full hover:bg-gray-700/50 px-4 rounded-md py-2 cursor-pointer",
@@ -86,6 +92,7 @@ const Sidebar = () => {
               Accounts
             </p>
           </div>
+
           <div
             className={cn(
               "w-full hover:bg-gray-700/50 px-4 rounded-md py-2 cursor-pointer",
@@ -98,6 +105,7 @@ const Sidebar = () => {
               Receivers
             </p>
           </div>
+
           <div
             className={cn(
               "w-full hover:bg-gray-700/50 px-4 rounded-md py-2 cursor-pointer",
@@ -110,24 +118,65 @@ const Sidebar = () => {
               Settings
             </p>
           </div>
+
+          {/* Administration (nur Admin) */}
+          {isAdmin && (
+            <div className="pt-2">
+              <p className="px-4 pb-2 text-[10px] uppercase tracking-wide text-gray-500">
+                Administration
+              </p>
+              <div
+                className={cn(
+                  "w-full hover:bg-gray-700/50 px-4 rounded-md py-2 cursor-pointer",
+                  pathname === "/collectors" && "bg-gray-700/50"
+                )}
+                onClick={() => router.push("/collectors")}
+              >
+                <p className="text-white font-semibold text-sm flex items-center">
+                  <Server className="size-4 mr-4" />
+                  Collectors
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Bottom: User-Info + Logout */}
       <div className="bg-gray-700/50 px-4 py-4 flex items-center justify-between">
-        <div>
-          <p className="text-white text-md">
-            {user ? `${user.first_name} ${user.last_name} ` : "Guest"}
-          </p>
-          <span className="text-gray-500 text-sm">
-            {user ? user.email : ""}
-          </span>
-        </div>
-        <div
-          onClick={handleLogout}
-          className="flex flex-col items-center justify-center cursor-pointer hover:text-white text-gray-500"
-        >
-          <ArrowLeftOnRectangleIcon className="size-6" />
-          <p className="text-sm">Logout</p>
-        </div>
+        {/* Wenn loading -> Skeleton-Leiste anzeigen */}
+        {loading ? (
+          <>
+            <div className="w-full pr-4">
+              <div className="h-3 w-40 rounded bg-gray-600/50 animate-pulse" />
+              <div className="h-3 w-56 rounded bg-gray-600/30 mt-2 animate-pulse" />
+            </div>
+            <div className="flex flex-col items-center justify-center text-gray-500 opacity-40 cursor-not-allowed">
+              <ArrowLeftOnRectangleIcon className="size-6" />
+              <p className="text-sm">Logout</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <p className="text-white text-md">
+                {user ? `${user.first_name} ${user.last_name}` : "Guest"}
+              </p>
+              <span className="text-gray-500 text-sm">
+                {user ? user.email : ""}
+              </span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex flex-col items-center justify-center cursor-pointer hover:text-white text-gray-500"
+              aria-label="Logout"
+              type="button"
+            >
+              <ArrowLeftOnRectangleIcon className="size-6" />
+              <p className="text-sm">Logout</p>
+            </button>
+          </>
+        )}
       </div>
     </nav>
   );

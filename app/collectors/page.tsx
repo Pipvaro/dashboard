@@ -1,10 +1,11 @@
 import CollectorsList from "@/components/Collectors/CollectorsList";
+import MobileNav from "@/components/MobileNav";
 import Sidebar from "@/components/Sidebar";
+import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
 import Image from "next/image";
 
 export default function Home() {
-
   return (
     <div className="w-full h-screen flex">
       <Sidebar />
@@ -17,9 +18,14 @@ export default function Home() {
             width={250}
             className="w-32 md:hidden block"
           />
-          <Menu className="text-[#d3d5f0] hover:bg-gray-700/30 rounded-full block md:hidden" />
+          <MobileNav />
         </div>
-        <h1 className="text-xl text-white font-semibold my-4 mx-4">Collectors</h1>
+        <h1 className={cn("text-3xl font-bold px-6 pt-6 text-white")}>
+          Collectors
+        </h1>
+        <p className="px-6 text-sm text-gray-500 pb-6">
+          View and manage all the collectors connected to Pipvaro.
+        </p>
         <CollectorsList />
       </main>
     </div>
