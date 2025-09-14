@@ -1,15 +1,32 @@
-"use client";
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Card from "@/components/packs/Card";
 import Sidebar from "@/components/Sidebar";
 import { cn } from "@/lib/utils";
+import { absoluteUrl } from "@/lib/absolute-url";
 import { Menu } from "lucide-react";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { fmtMoney, fmtNumber, timeAgo } from "@/lib/format";
 
-export default function Home() {
-  const router = useRouter();
-  const pathname = usePathname();
+
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const url = await absoluteUrl("/api/my-accounts");
+  const cookie = cookies().toString();
+
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: { cookie },
+  });
+
+  if (res.status === 401) {
+    redirect(`/login?next=/accounts`);
+  }
+
+  const data = await res.json();
+  const accounts = Array.isArray(data?.accounts) ? data.accounts : [];
 
   return (
     <div className="w-full h-screen flex">
@@ -25,18 +42,108 @@ export default function Home() {
           />
           <Menu className="text-[#d3d5f0] hover:bg-gray-700/30 rounded-full block md:hidden" />
         </div>
-        {/* Content */}
-        <h1
-          className={cn(
-            "text-3xl font-bold px-6 pt-6",
-            pathname === "/accounts" ? "text-white" : "text-gray-300"
-          )}
-        >
+
+        <h1 className={cn("text-3xl font-bold px-6 pt-6 text-white")}>
           Accounts
         </h1>
-        <p className="px-6 text-sm text-gray-500 pb-6">Accounts will be automatically imported and detected by using our receiver.</p>
-        <div className="px-6">
-          <Card>Test</Card>
+        <p className="px-6 text-sm text-gray-500 pb-6">
+          Accounts will be automatically imported and detected by using our
+          receiver.
+        </p>
+
+        <div className="px-6 space-y-3">
+          {accounts.length === 0 ? (
+            <Card>No accounts found.</Card>
+          ) : (
+            [...accounts]
+              .sort(
+                (a: any, b: any) =>
+                  new Date(b.snapshot_at ?? b.ts ?? 0).getTime() -
+                  new Date(a.snapshot_at ?? a.ts ?? 0).getTime()
+              )
+              .map((a: any) => {
+                const acc = a.account ?? {};
+                const trd = a.trading ?? {};
+                const ccy = acc.currency ?? "USD";
+                const equity =
+                  typeof trd.equity === "number" ? trd.equity : undefined;
+                const balance =
+                  typeof trd.balance === "number" ? trd.balance : undefined;
+                const ratio =
+                  balance && equity
+                    ? Math.max(0, Math.min(1, equity / balance))
+                    : undefined;
+                const isLive = (acc.type || "").toUpperCase() === "LIVE";
+
+                return (
+                  <Card key={a.receiver_id}>
+                    <div className="flex items-center justify-between gap-4">
+                      {/* left */}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="text-white font-medium truncate">
+                            {acc.id ?? a.receiver_id}{" "}
+                            {acc.name ? `| ${acc.name}` : ""}
+                          </div>
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                              isLive
+                                ? "border-emerald-500 text-emerald-400"
+                                : "border-yellow-500 text-yellow-400"
+                            }`}
+                          >
+                            {isLive ? "LIVE" : "DEMO"}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-400 truncate">
+                          {acc.company ?? "—"}{" "}
+                          {acc.server ? `• ${acc.server}` : ""}{" "}
+                          {acc.leverage ? `• 1:${acc.leverage}` : ""}
+                        </div>
+
+                        {/* mini equity/balance bar */}
+                        {ratio !== undefined && (
+                          <div className="mt-2">
+                            <div className="h-2 w-40 bg-gray-700/40 rounded">
+                              <div
+                                className="h-2 rounded"
+                                style={{
+                                  width: `${Math.round(ratio * 100)}%`,
+                                  background: "rgba(63,75,242,.9)",
+                                }}
+                              />
+                            </div>
+                            <div className="text-[10px] text-gray-500 mt-1">
+                              Equity/Balance: {Math.round((ratio || 0) * 100)}%
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* right */}
+                      <div className="text-right">
+                        <div className="text-white font-medium">
+                          {fmtMoney(balance, ccy)}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {fmtMoney(equity, ccy)} equity
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-1">
+                          {typeof trd.positions_total === "number" && (
+                            <span className="mr-2">
+                              Pos: {fmtNumber(trd.positions_total)}
+                            </span>
+                          )}
+                          {a.snapshot_at || a.ts
+                            ? `Updated ${timeAgo(a.ts ?? a.ts)}`
+                            : ""}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
+          )}
         </div>
       </main>
     </div>
