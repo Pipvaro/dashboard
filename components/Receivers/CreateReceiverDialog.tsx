@@ -150,9 +150,14 @@ export default function NewReceiverDrawer() {
                   label="Master URL"
                   value={resp.license?.master_url || "https://api.pipvaro.com"}
                 />
+                <Button
+                  className="w-full bg-[#3f4bf2] hover:bg-[#3f4bf2]/80"
+                >
+                  Download EA
+                </Button>
               </div>
               <p className="text-xs text-gray-500">
-                Trage diese Werte im MT5-EA ein: <i>InpMasterUrl</i>,{" "}
+                Enter those values in to MT5 EA: <i>InpMasterUrl</i>,{" "}
                 <i>InpReceiverId</i>, <i>InpLicenseId</i>, <i>InpKey</i>.
               </p>
             </>
