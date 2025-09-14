@@ -1,14 +1,10 @@
 "use client";
 
 import Sidebar from "@/components/Sidebar";
-import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
 
 export default function Home() {
-  const router = useRouter();
-  const pathname = usePathname();
 
   return (
     <div className="w-full h-screen flex">
