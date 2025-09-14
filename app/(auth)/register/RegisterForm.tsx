@@ -7,6 +7,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import logo from "../../../public/assets/Transparent/logo-transparent-wide.png";
+import loginImage9 from "../../../public/assets/login-image-9.png";
+
+
 
 export default function RegisterForm({ next }: { next: string }) {
   const router = useRouter();
@@ -59,12 +63,7 @@ export default function RegisterForm({ next }: { next: string }) {
           className="grid w-full max-w-sm items-center gap-3"
         >
           <div className="w-full flex flex-col items-center">
-            <Image
-              src={"/assets/Transparent/logo-transparent-wide.png"}
-              alt="logo"
-              width={200}
-              height={50}
-            />
+            <Image src={logo} alt="logo" width={200} height={50} />
             <h1 className="text-3xl text-white font-semibold">
               Create a new account
             </h1>
@@ -155,7 +154,7 @@ export default function RegisterForm({ next }: { next: string }) {
 
       <div className="w-1/2 hidden md:block">
         <Image
-          src={"/assets/login-image-9.png"}
+          src={loginImage9}
           alt="login-image"
           width={1908}
           height={1433}
