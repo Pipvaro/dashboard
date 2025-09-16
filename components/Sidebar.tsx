@@ -3,7 +3,8 @@
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
 import { ArrowLeftOnRectangleIcon } from "@heroicons/react/20/solid";
-import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+import { PaperClipIcon } from "@heroicons/react/24/outline";
+import { CalendarIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import {
   Contact,
   LayoutDashboard,
@@ -91,6 +92,23 @@ export default function Sidebar() {
           >
             Receivers
           </NavItem>
+          <div className="mt-5 mb-2 text-[10px] uppercase tracking-wider text-gray-500">
+            Others
+          </div>
+          <NavItem
+            active={pathname === "/calendar"}
+            onClick={() => router.push("/calendar")}
+            icon={<CalendarIcon className="size-4 mr-3" />}
+          >
+            Economic Calendar
+          </NavItem>
+          <NavItem
+            active={pathname === "/news"}
+            onClick={() => router.push("/news")}
+            icon={<PaperClipIcon className="size-4 mr-3" />}
+          >
+            Changelogs & News
+          </NavItem>
           <NavItem
             active={pathname === "/settings"}
             onClick={() => router.push("/settings")}
@@ -98,7 +116,6 @@ export default function Sidebar() {
           >
             Settings
           </NavItem>
-
           {isAdmin && (
             <>
               <div className="mt-5 mb-2 text-[10px] uppercase tracking-wider text-gray-500">
@@ -110,6 +127,41 @@ export default function Sidebar() {
                 icon={<Server className="size-4 mr-3" />}
               >
                 Collectors
+              </NavItem>
+              <NavItem
+                active={pathname === "/logs"}
+                onClick={() => router.push("/logs")}
+                icon={<Server className="size-4 mr-3" />}
+              >
+                Logs
+              </NavItem>
+              <NavItem
+                active={pathname === "/messages"}
+                onClick={() => router.push("/messages")}
+                icon={<Server className="size-4 mr-3" />}
+              >
+                Messages
+              </NavItem>
+              <NavItem
+                active={pathname === "/users"}
+                onClick={() => router.push("/users")}
+                icon={<Server className="size-4 mr-3" />}
+              >
+                Users
+              </NavItem>
+              <NavItem
+                active={pathname === "/rcvs"}
+                onClick={() => router.push("/rcvs")}
+                icon={<Server className="size-4 mr-3" />}
+              >
+                Receivers
+              </NavItem>
+              <NavItem
+                active={pathname === "/accs"}
+                onClick={() => router.push("/accs")}
+                icon={<Server className="size-4 mr-3" />}
+              >
+                Accounts
               </NavItem>
             </>
           )}
