@@ -1,8 +1,6 @@
 // app/api/receivers/[rid]/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { absoluteUrl } from "@/lib/absolute-url";
-
 
 const API = (process.env.AUTH_API_BASE || "https://api.pipvaro.com").replace(
   /\/+$/,

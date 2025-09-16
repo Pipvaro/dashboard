@@ -26,14 +26,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#1e2122]`}
       >
         {/* Nur ein Suspense-Fallback um deine Pages – sonst nichts ändern */}
-        <Suspense fallback={<AppSkeleton />}>
-          <div className="bg-[#3f4bf2] w-full py-2 px-4 text-white">
-            <p className="text-sm">
-              🚀 Welcome to Pipvaro! Your trading automation starts here. <strong>Since we are currently in beta phase some features may not be available.</strong> We are currently on <strong>Version 0.0.5</strong>
-            </p>
-          </div>
-          {children}
-        </Suspense>
+        <Suspense fallback={<AppSkeleton />}>{children}</Suspense>
       </body>
     </html>
   );
