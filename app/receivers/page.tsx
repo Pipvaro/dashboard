@@ -132,7 +132,9 @@ export default async function Page({
           )}
 
           {receivers.length === 0 ? (
-            <Card>No receivers found.</Card>
+            <Card>
+              <p className="text-gray-500">No receivers found.</p>
+            </Card>
           ) : (
             receivers.map((r) => {
               const snap = r.account_snapshot || {};

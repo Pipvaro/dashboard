@@ -3,6 +3,7 @@
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
 import { ArrowLeftOnRectangleIcon } from "@heroicons/react/20/solid";
+import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import {
   Contact,
   LayoutDashboard,
@@ -19,6 +20,7 @@ type User = {
   last_name: string;
   email: string;
   role?: string; // <-- wichtig für Admin
+  subscription: string;
 };
 
 const Sidebar = () => {
@@ -143,40 +145,80 @@ const Sidebar = () => {
       </div>
 
       {/* Bottom: User-Info + Logout */}
-      <div className="bg-gray-700/50 px-4 py-4 flex items-center justify-between">
-        {/* Wenn loading -> Skeleton-Leiste anzeigen */}
-        {loading ? (
+
+      <div className="bg-gray-700/50 flex w-full flex-col items-center justify-between">
+        {user?.subscription && (
           <>
-            <div className="w-full pr-4">
-              <div className="h-3 w-40 rounded bg-gray-600/50 animate-pulse" />
-              <div className="h-3 w-56 rounded bg-gray-600/30 mt-2 animate-pulse" />
-            </div>
-            <div className="flex flex-col items-center justify-center text-gray-500 opacity-40 cursor-not-allowed">
-              <ArrowLeftOnRectangleIcon className="size-6" />
-              <p className="text-sm">Logout</p>
-            </div>
-          </>
-        ) : (
-          <>
-            <div>
-              <p className="text-white text-md">
-                {user ? `${user.first_name} ${user.last_name}` : "Guest"}
-              </p>
-              <span className="text-gray-500 text-sm">
-                {user ? user.email : ""}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex flex-col items-center justify-center cursor-pointer hover:text-white text-gray-500"
-              aria-label="Logout"
-              type="button"
-            >
-              <ArrowLeftOnRectangleIcon className="size-6" />
-              <p className="text-sm">Logout</p>
-            </button>
+            {/* Abo-Status */}
+            {user.subscription.toLowerCase() == "fusion" && (
+              <div className="bg-gray-500/20 w-full text-start px-4 py-2 flex justify-between items-center">
+                <span className="text-xs text-white font-medium capitalize">
+                  {user.subscription} Plan
+                </span>
+                <div className="text-xs text-gray-300 font-medium flex items-center gap-1 cursor-pointer hover:text-white">
+                  <Cog6ToothIcon className="size-4 text-gray-300 animate-spin-slow" />
+                  Manage
+                </div>
+              </div>
+            )}
+            {user.subscription.toLowerCase() == "lunar" && (
+              <div className="bg-yellow-500/40 w-full text-start px-4 py-2 flex justify-between items-center">
+                <span className="text-xs text-white font-medium capitalize">
+                  {user.subscription} Plan
+                </span>
+                <div className="text-xs text-gray-300 font-medium flex items-center gap-1 cursor-pointer hover:text-white">
+                  <Cog6ToothIcon className="size-4 text-gray-300 animate-spin-slow" />
+                  Manage
+                </div>
+              </div>
+            )}
+            {user.subscription.toLowerCase() == "nova" && (
+              <div className="bg-[#3f4bf2]/40 w-full text-start px-4 py-2 flex justify-between items-center">
+                <span className="text-xs text-white font-medium capitalize">
+                  {user.subscription} Plan
+                </span>
+                <div className="text-xs text-gray-300 font-medium flex items-center gap-1 cursor-pointer hover:text-white">
+                  <Cog6ToothIcon className="size-4 text-gray-300 animate-spin-slow" />
+                  Manage
+                </div>
+              </div>
+            )}
           </>
         )}
+        <div className="bg-gray-700/50 px-4 py-4 flex flex-row w-full items-center justify-between">
+          {loading ? (
+            <>
+              <div className="w-full pr-4">
+                <div className="h-3 w-40 rounded bg-gray-600/50 animate-pulse" />
+                <div className="h-3 w-56 rounded bg-gray-600/30 mt-2 animate-pulse" />
+              </div>
+              <div className="flex flex-col items-center justify-center text-gray-500 opacity-40 cursor-not-allowed">
+                <ArrowLeftOnRectangleIcon className="size-6" />
+                <p className="text-sm">Logout</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <p className="text-white text-md">
+                  {user ? `${user.first_name} ${user.last_name}` : "Guest"}
+                </p>
+                <span className="text-gray-500 text-sm">
+                  {user ? user.email : ""}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex flex-col items-center justify-center cursor-pointer hover:text-white text-gray-500"
+                aria-label="Logout"
+                type="button"
+              >
+                <ArrowLeftOnRectangleIcon className="size-6" />
+                <p className="text-sm">Logout</p>
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );

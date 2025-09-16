@@ -54,7 +54,9 @@ export default async function Home() {
 
         <div className="px-6 space-y-3">
           {accounts.length === 0 ? (
-            <Card>No accounts found.</Card>
+            <Card>
+              <p className="text-gray-500">No accounts found.</p>
+            </Card>
           ) : (
             [...accounts]
               .sort(
