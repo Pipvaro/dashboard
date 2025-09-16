@@ -1,13 +1,13 @@
 // app/api/receivers/[rid]/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { absoluteUrl } from "@/lib/absolute-url";
 
-const strip = (v?: string) =>
-  String(v ?? "")
-    .trim()
-    .replace(/^['"]|['"]$/g, "");
-const API = strip(process.env.AUTH_API_BASE) || "https://api.pipvaro.com";
 
+const API = (process.env.AUTH_API_BASE || "https://api.pipvaro.com").replace(
+  /\/+$/,
+  ""
+);
 async function api(path: string, init?: RequestInit) {
   const res = await fetch(`${API}${path}`, init);
   const data = await res.json().catch(() => ({}));
@@ -69,6 +69,37 @@ export async function GET(
     return NextResponse.json({ ok: true, receiver, account, metrics });
   } catch (e) {
     console.error("GET /api/receivers/[rid]", e);
+    return NextResponse.json(
+      { ok: false, message: "server_error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  _req: Request,
+  ctx: { params: Promise<{ rid: string }> }
+) {
+  try {
+    const { rid } = await ctx.params;
+
+    // (optional) Token weiterreichen, falls Master Auth erwartet
+    const jar = await cookies();
+    const at = jar.get("access_token")?.value;
+
+    const r = await fetch(`${API}/admin/receivers/${encodeURIComponent(rid)}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...(at ? { Authorization: `Bearer ${at}` } : {}),
+      },
+      cache: "no-store",
+    });
+
+    const data = await r.json().catch(() => ({}));
+    return NextResponse.json(data, { status: r.status });
+  } catch (e) {
+    console.error("DELETE /api/receivers/[rid]", e);
     return NextResponse.json(
       { ok: false, message: "server_error" },
       { status: 500 }
