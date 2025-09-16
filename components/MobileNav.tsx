@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -12,9 +13,103 @@ import {
   Menu as MenuIcon,
   X,
 } from "lucide-react";
+import { CalendarIcon, PaperClipIcon } from "@heroicons/react/24/outline";
 import { ArrowLeftOnRectangleIcon } from "@heroicons/react/20/solid";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+
+/* ---------------- Status badge (same behavior as desktop) ---------------- */
+
+type HB = {
+  status: 0 | 1 | 2 | 3;
+  time: string;
+  msg?: string;
+  ping?: number | null;
+};
+type HeartbeatPayload = { heartbeatList?: Record<string, HB[]> };
+
+function StatusBadge() {
+  const [label, setLabel] = useState("Status...");
+  const [classes, setClasses] = useState({
+    wrap: "bg-gray-500/20 text-gray-300",
+    dot: "bg-gray-400",
+    anim: "animate-pulse",
+  });
+
+  function applyStatus(statuses: number[]) {
+    // 0 = DOWN, 1 = UP, 2 = PENDING, 3 = MAINTENANCE
+    const hasDown = statuses.includes(0);
+    const hasMaintOrPending = statuses.some((s) => s === 3 || s === 2);
+
+    if (hasDown) {
+      setLabel("Outage");
+      setClasses({
+        wrap: "bg-rose-200/10 text-rose-400",
+        dot: "bg-rose-500",
+        anim: "animate-ping",
+      });
+    } else if (hasMaintOrPending) {
+      setLabel("Maintenance");
+      setClasses({
+        wrap: "bg-amber-200/10 text-amber-400",
+        dot: "bg-amber-500",
+        anim: "animate-ping",
+      });
+    } else if (statuses.length > 0) {
+      setLabel("Operational");
+      setClasses({
+        wrap: "bg-emerald-200/10 text-emerald-400",
+        dot: "bg-emerald-500",
+        anim: "animate-ping",
+      });
+    } else {
+      setLabel("Unknown");
+      setClasses({
+        wrap: "bg-gray-500/20 text-gray-300",
+        dot: "bg-gray-400",
+        anim: "animate-pulse",
+      });
+    }
+  }
+
+  async function load() {
+    try {
+      const r = await fetch("/api/status/heartbeat?limit=1", {
+        cache: "no-store",
+      });
+      const d: HeartbeatPayload = await r.json();
+      const statuses = Object.values(d.heartbeatList ?? {}).map(
+        (arr) => arr[arr.length - 1]?.status ?? 0
+      );
+      applyStatus(statuses);
+    } catch {
+      applyStatus([]);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-x-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium",
+        classes.wrap
+      )}
+      title="Service status"
+    >
+      <span
+        className={cn("size-1.5 rounded-full", classes.dot, classes.anim)}
+      />
+      {label}
+    </span>
+  );
+}
+
+/* --------------------------------- MobileNav -------------------------------- */
 
 type User = {
   first_name: string;
@@ -108,13 +203,23 @@ export default function MobileNav() {
           >
             {/* Header */}
             <div className="h-16 border-b border-gray-800 px-4 flex items-center justify-between">
-              <Image
-                src="/assets/Transparent/logo-dash.png"
-                alt="logo"
-                width={128}
-                height={32}
-                className="w-28"
-              />
+              <div className="flex items-center gap-3">
+                <Image
+                  src="/assets/Transparent/logo-dash.png"
+                  alt="logo"
+                  width={128}
+                  height={32}
+                  className="w-28"
+                />
+                {/* Live status (linked) */}
+                <Link
+                  href="https://status.pipvaro.com"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <StatusBadge />
+                </Link>
+              </div>
               <button
                 aria-label="Close navigation"
                 onClick={() => setOpen(false)}
@@ -144,6 +249,23 @@ export default function MobileNav() {
                 label="Receivers"
                 onClick={() => router.push("/receivers")}
               />
+
+              {/* Others */}
+              <p className="px-2 pt-2 text-[10px] uppercase tracking-wide text-gray-500">
+                Others
+              </p>
+              <Item
+                active={pathname === "/calendar"}
+                icon={CalendarIcon}
+                label="Economic Calendar"
+                onClick={() => router.push("/calendar")}
+              />
+              <Item
+                active={pathname === "/news"}
+                icon={PaperClipIcon}
+                label="Changelogs & News"
+                onClick={() => router.push("/news")}
+              />
               <Item
                 active={pathname === "/settings"}
                 icon={Settings}
@@ -151,6 +273,7 @@ export default function MobileNav() {
                 onClick={() => router.push("/settings")}
               />
 
+              {/* Admin */}
               {isAdmin && (
                 <div className="pt-1">
                   <p className="px-2 pb-2 text-[10px] uppercase tracking-wide text-gray-500">
@@ -161,6 +284,36 @@ export default function MobileNav() {
                     icon={Server}
                     label="Collectors"
                     onClick={() => router.push("/collectors")}
+                  />
+                  <Item
+                    active={pathname === "/logs"}
+                    icon={Server}
+                    label="Logs"
+                    onClick={() => router.push("/logs")}
+                  />
+                  <Item
+                    active={pathname === "/messages"}
+                    icon={Server}
+                    label="Messages"
+                    onClick={() => router.push("/messages")}
+                  />
+                  <Item
+                    active={pathname === "/users"}
+                    icon={Server}
+                    label="Users"
+                    onClick={() => router.push("/users")}
+                  />
+                  <Item
+                    active={pathname === "/rcvs"}
+                    icon={Server}
+                    label="Receivers"
+                    onClick={() => router.push("/rcvs")}
+                  />
+                  <Item
+                    active={pathname === "/accs"}
+                    icon={Server}
+                    label="Accounts"
+                    onClick={() => router.push("/accs")}
                   />
                 </div>
               )}
