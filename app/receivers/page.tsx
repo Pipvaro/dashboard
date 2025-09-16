@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import { Menu } from "lucide-react";
 import MobileNav from "@/components/MobileNav";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -157,134 +158,136 @@ export default async function Page({
               const online = Date.now() - last < 90_000;
 
               return (
-                <Card key={r.receiver_id}>
-                  {/* Header (kompakt) */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="text-white font-medium truncate">
-                          {r.name ?? r.receiver_id}
+                <Link href={`/receivers/${r.receiver_id}`} key={r.receiver_id} className="block">
+                  <Card>
+                    {/* Header (kompakt) */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="text-white font-medium truncate">
+                            {r.name ?? r.receiver_id}
+                          </div>
+                          <Pill color={online ? "green" : "red"}>
+                            {online ? "Online" : "Offline"}
+                          </Pill>
+                          <Pill color="blue">v{r.settings_version ?? "—"}</Pill>
+                          <Pill color={r.status === "ACTIVE" ? "green" : "red"}>
+                            {r.status ?? "UNKNOWN"}
+                          </Pill>
                         </div>
-                        <Pill color={online ? "green" : "red"}>
-                          {online ? "Online" : "Offline"}
-                        </Pill>
-                        <Pill color="blue">v{r.settings_version ?? "—"}</Pill>
-                        <Pill color={r.status === "ACTIVE" ? "green" : "red"}>
-                          {r.status ?? "UNKNOWN"}
-                        </Pill>
-                      </div>
-                      <div className="text-[11px] text-gray-400 truncate mt-0.5">
-                        ID: {r.receiver_id} • IP: {r.ip_current ?? "—"}
-                        {r.ip_last && r.ip_last !== r.ip_current
-                          ? ` (prev ${r.ip_last})`
-                          : ""}{" "}
-                        • {last ? `Last seen ${timeAgo(r.last_seen)}` : "—"}
-                      </div>
-                      {(acc?.company || acc?.server || acc?.leverage) && (
-                        <div className="text-[11px] text-gray-500 truncate">
-                          {acc.company ?? "—"}
-                          {acc.server ? ` • ${acc.server}` : ""}
-                          {acc.leverage ? ` • 1:${acc.leverage}` : ""}
+                        <div className="text-[11px] text-gray-400 truncate mt-0.5">
+                          ID: {r.receiver_id} • IP: {r.ip_current ?? "—"}
+                          {r.ip_last && r.ip_last !== r.ip_current
+                            ? ` (prev ${r.ip_last})`
+                            : ""}{" "}
+                          • {last ? `Last seen ${timeAgo(r.last_seen)}` : "—"}
                         </div>
-                      )}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <Pill
-                        color={licInfo.status === "ACTIVE" ? "green" : "red"}
-                      >
-                        License {licInfo.status ?? "UNKNOWN"}
-                      </Pill>
-                      <div className="text-[10px] text-gray-500 mt-0.5">
-                        {licInfo.last_check_at
-                          ? `Checked ${timeAgo(licInfo.last_check_at)}`
-                          : "No license check"}
+                        {(acc?.company || acc?.server || acc?.leverage) && (
+                          <div className="text-[11px] text-gray-500 truncate">
+                            {acc.company ?? "—"}
+                            {acc.server ? ` • ${acc.server}` : ""}
+                            {acc.leverage ? ` • 1:${acc.leverage}` : ""}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <Pill
+                          color={licInfo.status === "ACTIVE" ? "green" : "red"}
+                        >
+                          License {licInfo.status ?? "UNKNOWN"}
+                        </Pill>
+                        <div className="text-[10px] text-gray-500 mt-0.5">
+                          {licInfo.last_check_at
+                            ? `Checked ${timeAgo(licInfo.last_check_at)}`
+                            : "No license check"}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Meta rows (kompakt, geringe Gaps) */}
-                  <div className="mt-2 grid grid-cols-1 xl:grid-cols-3 gap-2">
-                    <div className="space-y-1.5">
-                      <Row label="Allowed">
-                        <Pill color="gray">Symbols: {symbols.length}</Pill>
-                        {symbols.slice(0, 2).map((s) => (
-                          <Pill key={s}>{s}</Pill>
-                        ))}
-                        {symbols.length > 2 && (
-                          <Pill>+{symbols.length - 2}</Pill>
-                        )}
-                        <Pill color="gray">Sources: {srcs.length}</Pill>
-                      </Row>
-                      <Row label="Position">
-                        <Pill>
-                          Max open: {limits.max_open_total ?? "—"}/
-                          {limits.max_open_per_symbol ?? "—"}
-                        </Pill>
-                        <Pill color={limits.enabled ? "green" : "red"}>
-                          {limits.enabled ? "enabled" : "disabled"}
-                        </Pill>
-                      </Row>
-                    </div>
+                    {/* Meta rows (kompakt, geringe Gaps) */}
+                    <div className="mt-2 grid grid-cols-1 xl:grid-cols-3 gap-2">
+                      <div className="space-y-1.5">
+                        <Row label="Allowed">
+                          <Pill color="gray">Symbols: {symbols.length}</Pill>
+                          {symbols.slice(0, 2).map((s) => (
+                            <Pill key={s}>{s}</Pill>
+                          ))}
+                          {symbols.length > 2 && (
+                            <Pill>+{symbols.length - 2}</Pill>
+                          )}
+                          <Pill color="gray">Sources: {srcs.length}</Pill>
+                        </Row>
+                        <Row label="Position">
+                          <Pill>
+                            Max open: {limits.max_open_total ?? "—"}/
+                            {limits.max_open_per_symbol ?? "—"}
+                          </Pill>
+                          <Pill color={limits.enabled ? "green" : "red"}>
+                            {limits.enabled ? "enabled" : "disabled"}
+                          </Pill>
+                        </Row>
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <Row label="Trade">
-                        <Pill>Units: {rules.units ?? "pips"}</Pill>
-                        <Pill>
-                          SL: {rules?.sl?.mode ?? "—"}
-                          {rules?.sl?.fixed_pips
-                            ? ` (${rules.sl.fixed_pips})`
-                            : ""}
-                        </Pill>
-                        <Pill>
-                          TP: {rules?.tp?.mode ?? "—"}
-                          {rules?.tp?.count ? ` x${rules.tp.count}` : ""}
-                          {rules?.tp?.fixed_pips
-                            ? ` (${rules.tp.fixed_pips})`
-                            : ""}
-                        </Pill>
-                        <Pill>
-                          BE: {rules?.breakeven?.mode ?? "—"}
-                          {rules?.breakeven?.trigger_tp_index
-                            ? ` (#${rules.breakeven.trigger_tp_index})`
-                            : ""}
-                        </Pill>
-                        <Pill>
-                          Trailing: {rules?.trailing?.mode ?? "disabled"}
-                        </Pill>
-                        {rules?.volume?.per_tp != null && (
-                          <Pill>per TP: {rules.volume.per_tp}</Pill>
-                        )}
-                      </Row>
-                      <Row label="News">
-                        <Pill>
-                          {policy.mode ?? "—"}{" "}
-                          {policy.before_sec != null
-                            ? `(${policy.before_sec}s`
-                            : ""}
-                          {policy.after_sec != null
-                            ? `/${policy.after_sec}s)`
-                            : policy.before_sec != null
-                            ? ")"
-                            : ""}
-                        </Pill>
-                      </Row>
-                    </div>
+                      <div className="space-y-1.5">
+                        <Row label="Trade">
+                          <Pill>Units: {rules.units ?? "pips"}</Pill>
+                          <Pill>
+                            SL: {rules?.sl?.mode ?? "—"}
+                            {rules?.sl?.fixed_pips
+                              ? ` (${rules.sl.fixed_pips})`
+                              : ""}
+                          </Pill>
+                          <Pill>
+                            TP: {rules?.tp?.mode ?? "—"}
+                            {rules?.tp?.count ? ` x${rules.tp.count}` : ""}
+                            {rules?.tp?.fixed_pips
+                              ? ` (${rules.tp.fixed_pips})`
+                              : ""}
+                          </Pill>
+                          <Pill>
+                            BE: {rules?.breakeven?.mode ?? "—"}
+                            {rules?.breakeven?.trigger_tp_index
+                              ? ` (#${rules.breakeven.trigger_tp_index})`
+                              : ""}
+                          </Pill>
+                          <Pill>
+                            Trailing: {rules?.trailing?.mode ?? "disabled"}
+                          </Pill>
+                          {rules?.volume?.per_tp != null && (
+                            <Pill>per TP: {rules.volume.per_tp}</Pill>
+                          )}
+                        </Row>
+                        <Row label="News">
+                          <Pill>
+                            {policy.mode ?? "—"}{" "}
+                            {policy.before_sec != null
+                              ? `(${policy.before_sec}s`
+                              : ""}
+                            {policy.after_sec != null
+                              ? `/${policy.after_sec}s)`
+                              : policy.before_sec != null
+                              ? ")"
+                              : ""}
+                          </Pill>
+                        </Row>
+                      </div>
 
-                    <div className="space-y-1.5">
-                      <Row label="Drawdown">
-                        <Pill color="amber">
-                          Daily: {dd?.daily?.pct ?? "—"}%
-                        </Pill>
-                        <Pill color="amber">Max: {dd?.max?.pct ?? "—"}%</Pill>
-                        <Pill color={dd?.locked_until ? "red" : "gray"}>
-                          {dd?.locked_until
-                            ? `Locked until ${timeAgo(dd.locked_until)}`
-                            : "Unlocked"}
-                        </Pill>
-                      </Row>
+                      <div className="space-y-1.5">
+                        <Row label="Drawdown">
+                          <Pill color="amber">
+                            Daily: {dd?.daily?.pct ?? "—"}%
+                          </Pill>
+                          <Pill color="amber">Max: {dd?.max?.pct ?? "—"}%</Pill>
+                          <Pill color={dd?.locked_until ? "red" : "gray"}>
+                            {dd?.locked_until
+                              ? `Locked until ${timeAgo(dd.locked_until)}`
+                              : "Unlocked"}
+                          </Pill>
+                        </Row>
+                      </div>
                     </div>
-                  </div>
-                </Card>
+                  </Card>
+                </Link>
               );
             })
           )}

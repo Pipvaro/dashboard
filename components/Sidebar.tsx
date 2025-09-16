@@ -153,7 +153,7 @@ const Sidebar = () => {
             {user.subscription.toLowerCase() == "fusion" && (
               <div className="bg-gray-500/20 w-full text-start px-4 py-2 flex justify-between items-center">
                 <span className="text-xs text-white font-medium capitalize">
-                  {user.subscription} Plan
+                  {user.subscription} Plan (Free)
                 </span>
                 <div className="text-xs text-gray-300 font-medium flex items-center gap-1 cursor-pointer hover:text-white">
                   <Cog6ToothIcon className="size-4 text-gray-300 animate-spin-slow" />
