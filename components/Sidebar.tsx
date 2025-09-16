@@ -13,7 +13,9 @@ import {
   Server,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 type User = {
   first_name: string;
@@ -22,6 +24,95 @@ type User = {
   role?: string;
   subscription: string;
 };
+
+type HB = {
+  status: 0 | 1 | 2 | 3;
+  time: string;
+  msg?: string;
+  ping?: number | null;
+};
+type HeartbeatPayload = { heartbeatList?: Record<string, HB[]> };
+
+// ---- kleine Badge, die periodisch den Gesamtstatus ermittelt ----
+function StatusBadge() {
+  const [label, setLabel] = useState("Status...");
+  const [classes, setClasses] = useState({
+    wrap: "bg-gray-500/20 text-gray-300",
+    dot: "bg-gray-400",
+    anim: "animate-pulse",
+  });
+
+  function applyStatus(statuses: number[]) {
+    // 0 = DOWN, 1 = UP, 2 = PENDING, 3 = MAINTENANCE
+    const hasDown = statuses.includes(0);
+    const hasMaintOrPending = statuses.some((s) => s === 3 || s === 2);
+    if (hasDown) {
+      setLabel("Outage");
+      setClasses({
+        wrap: "bg-rose-200/10 text-rose-400",
+        dot: "bg-rose-500",
+        anim: "animate-ping",
+      });
+    } else if (hasMaintOrPending) {
+      setLabel("Maintenance");
+      setClasses({
+        wrap: "bg-amber-200/10 text-amber-400",
+        dot: "bg-amber-500",
+        anim: "animate-ping",
+      });
+    } else if (statuses.length > 0) {
+      setLabel("Operational");
+      setClasses({
+        wrap: "bg-emerald-200/10 text-emerald-400",
+        dot: "bg-emerald-500",
+        anim: "animate-ping",
+      });
+    } else {
+      setLabel("Unknown");
+      setClasses({
+        wrap: "bg-gray-500/20 text-gray-300",
+        dot: "bg-gray-400",
+        anim: "animate-pulse",
+      });
+    }
+  }
+
+  async function load() {
+    try {
+      const r = await fetch("/api/status/heartbeat?limit=1", {
+        cache: "no-store",
+      });
+      const d: HeartbeatPayload = await r.json();
+      const statuses = Object.values(d.heartbeatList ?? {}).map(
+        (arr) => arr[arr.length - 1]?.status ?? 0
+      );
+      applyStatus(statuses);
+    } catch {
+      applyStatus([]);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 30000); // alle 30s aktualisieren
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-x-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium",
+        classes.wrap
+      )}
+      title="Service status"
+    >
+      <span
+        className={cn("size-1.5 rounded-full", classes.dot, classes.anim)}
+      />
+      {label}
+    </span>
+  );
+}
 
 export default function Sidebar() {
   const router = useRouter();
@@ -63,10 +154,16 @@ export default function Sidebar() {
             height={32}
             className="w-32"
           />
-          <span className="inline-flex items-center gap-x-1.5 rounded-md bg-green-200/10 px-1.5 py-0.5 text-xs font-medium text-green-400">
-            <span className="size-1.5 rounded-full bg-green-500 animate-ping" />
-            Operational
-          </span>
+          {/* Live-Status (Uptime Kuma) */}
+          <Link
+            href="https://status.pipvaro.com"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <div className="cursor-pointer">
+              <StatusBadge />
+            </div>
+          </Link>
         </div>
 
         {/* Navigation (scrollbar nur hier, unten bleibt stehen) */}
