@@ -51,19 +51,52 @@ function useAutoJSON<T = any>(url: string, intervalMs = 5000) {
     timer.current = setInterval(load, intervalMs);
     return () => clearInterval(timer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url]);
+  }, [url, intervalMs]);
 
   return data;
 }
 
-export default function AccountLive({ aid, receiverId, currency }: Props) {
-  // History für Charts + Tabelle
-  const hist = useAutoJSON<{ ok: boolean; items: HistRow[] }>(
-    `/api/accounts/${encodeURIComponent(aid)}/history?limit=240`,
-    5000
-  );
+type RangeMode = "live" | "1h" | "4h" | "1d";
 
-  // Trades für Trade-History
+export default function AccountLive({ aid, receiverId, currency }: Props) {
+  // ---- Range-Auswahl: Standard 4h wie gewünscht
+  const [mode, setMode] = useState<RangeMode>("live");
+
+  // URL + Poll-Intervall je nach Range bauen
+  const { histUrl, pollMs, subtitle } = useMemo(() => {
+    const now = new Date();
+    const to = encodeURIComponent(now.toISOString());
+
+    if (mode === "live") {
+      return {
+        histUrl: `/api/accounts/${encodeURIComponent(aid)}/history?limit=240`,
+        pollMs: 5000,
+        subtitle: "Live view (auto-refresh)",
+      };
+    }
+
+    const hours = mode === "1h" ? 1 : mode === "4h" ? 4 : /* 1d */ 24;
+    const from = new Date(now.getTime() - hours * 60 * 60 * 1000);
+    const qs = `from=${encodeURIComponent(
+      from.toISOString()
+    )}&to=${to}&limit=2000`; // genügend Punkte
+
+    return {
+      histUrl: `/api/accounts/${encodeURIComponent(aid)}/history?${qs}`,
+      pollMs: mode === "1d" ? 60000 : 30000,
+      subtitle:
+        mode === "1h"
+          ? "Last 1 hour"
+          : mode === "4h"
+          ? "Last 4 hours"
+          : "Last 24 hours",
+    };
+  }, [aid, mode]);
+
+  // History für Charts + Tabelle
+  const hist = useAutoJSON<{ ok: boolean; items: HistRow[] }>(histUrl, pollMs);
+
+  // Trades für Trade-History (unabhängig vom Range)
   const trades = useAutoJSON<{ ok: boolean; items: any[] }>(
     `/api/accounts/${encodeURIComponent(aid)}/trades?limit=20`,
     5000
@@ -100,7 +133,23 @@ export default function AccountLive({ aid, receiverId, currency }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="text-white font-medium mb-3">Live Reporting</div>
+      <div className="flex items-center justify-between">
+        <div className="text-white font-medium">Analytics</div>
+        {/* Range-Auswahl */}
+        <div className="text-xs text-gray-300 flex items-center gap-2">
+          <label className="text-gray-400">Range</label>
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value as RangeMode)}
+            className="bg-[#0d1217] border border-gray-700/70 rounded-md px-2 py-1 text-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-600"
+          >
+            <option value="live">Live</option>
+            <option value="1h">1h</option>
+            <option value="4h">4h</option>
+            <option value="1d">1d</option>
+          </select>
+        </div>
+      </div>
 
       {/* Live KPIs mit Up/Down */}
       <Card>
@@ -139,28 +188,22 @@ export default function AccountLive({ aid, receiverId, currency }: Props) {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <SectionTitle
-            title="Equity"
-            subtitle="Recent points (auto-refresh)"
-          />
+          <SectionTitle title="Equity" subtitle={subtitle} />
           <ChartLine data={series} dataKey="equity" />
         </Card>
         <Card>
-          <SectionTitle
-            title="Balance"
-            subtitle="Recent points (auto-refresh)"
-          />
+          <SectionTitle title="Balance" subtitle={subtitle} />
           <ChartLine data={series} dataKey="balance" />
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <SectionTitle title="Margin level (%)" subtitle="Recent points" />
+          <SectionTitle title="Margin level (%)" subtitle={subtitle} />
           <ChartLine data={series} dataKey="ml" />
         </Card>
         <Card>
-          <SectionTitle title="Open positions" subtitle="Recent points" />
+          <SectionTitle title="Open positions" subtitle={subtitle} />
           <ChartLine data={series} dataKey="pos" />
         </Card>
       </div>
