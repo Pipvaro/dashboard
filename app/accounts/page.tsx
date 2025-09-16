@@ -39,8 +39,7 @@ export default async function Home() {
             <strong>
               Since we are currently in beta phase some features may not be
               available.
-            </strong>{" "}
-            We are currently on <strong>Version 0.0.5</strong>
+            </strong>
           </p>
         </div>
         <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">

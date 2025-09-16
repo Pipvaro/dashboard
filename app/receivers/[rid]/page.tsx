@@ -47,8 +47,7 @@ export default async function Page({
             <strong>
               Since we are currently in beta phase some features may not be
               available.
-            </strong>{" "}
-            We are currently on <strong>Version 0.0.5</strong>
+            </strong>
           </p>
         </div>
         {/* mobile topbar könnte hier verbleiben */}
