@@ -263,7 +263,7 @@ export default function CalendarPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0b0f14]">
+    <div className="min-h-screen bg-[#0b0f14] overflow-x-hidden">
       {/* Desktop sidebar */}
       <Sidebar />
 
