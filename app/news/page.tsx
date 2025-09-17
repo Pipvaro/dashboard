@@ -22,10 +22,6 @@ import Link from "next/link";
 import Image from "next/image";
 import MobileNav from "@/components/MobileNav";
 
-/* === Sanity === */
-import { client } from "@/sanity/lib/client";
-import { groq } from "next-sanity";
-
 /* --------------------------------------------
    Dummy data (maintain directly in code)
 --------------------------------------------- */
@@ -55,62 +51,62 @@ const TAGS = [
 ] as const;
 
 const ITEMS: Item[] = [
-  // {
-  //   id: "v0.7.0",
-  //   type: "changelog",
-  //   version: "0.7.0",
-  //   date: "2025-09-15T18:30:00Z",
-  //   title: "Big account analytics refresh",
-  //   tags: ["Dashboard", "Performance"],
-  //   highlights: [
-  //     "New live KPIs with auto-refresh and green/red deltas",
-  //     "Balance / Equity / Margin Level charts with smoother scales",
-  //     "4h / 1d timeframes added to charts",
-  //     "Faster server-side data joins for account snapshots",
-  //   ],
-  // },
-  // {
-  //   id: "news-nova",
-  //   type: "news",
-  //   date: "2025-09-12T14:10:00Z",
-  //   title: "Introducing the Nova plan",
-  //   body: "Nova unlocks advanced analytics, higher data retention and priority routing. Existing Lunar users can upgrade in Settings.",
-  //   tags: ["General"],
-  // },
-  // {
-  //   id: "v0.6.3",
-  //   type: "changelog",
-  //   version: "0.6.3",
-  //   date: "2025-09-08T08:05:00Z",
-  //   title: "EA risk controls + trade rules",
-  //   tags: ["Expert Advisor", "Security"],
-  //   highlights: [
-  //     "Added daily and max drawdown guards (auto lock on breach)",
-  //     "Configurable trade rules (TP/SL presets, breakeven and trailing)",
-  //     "Receiver-side settings versioning and change propagation",
-  //   ],
-  // },
-  // {
-  //   id: "news-maintenance",
-  //   type: "news",
-  //   date: "2025-09-05T19:00:00Z",
-  //   title: "Scheduled maintenance completed",
-  //   body: "Infrastructure patches have been applied. No action required. If you notice connectivity issues, restart your receiver.",
-  //   tags: ["General"],
-  // },
-  // {
-  //   id: "v0.6.1",
-  //   type: "changelog",
-  //   version: "0.6.1",
-  //   date: "2025-08-30T10:00:00Z",
-  //   title: "Collector stability & API quality",
-  //   tags: ["Collectors", "API", "Bugfix", "Performance"],
-  //   highlights: [
-  //     "Improved order-queue ACK handling for slow terminals",
-  //     "Reduced payload sizes for metrics ingestion by ~28%",
-  //     "Fixed rare duplicate snapshot insertions",
-  //   ],
-  // },
+  {
+    id: "v0.7.0",
+    type: "changelog",
+    version: "0.7.0",
+    date: "2025-09-15T18:30:00Z",
+    title: "Big account analytics refresh",
+    tags: ["Dashboard", "Performance"],
+    highlights: [
+      "New live KPIs with auto-refresh and green/red deltas",
+      "Balance / Equity / Margin Level charts with smoother scales",
+      "4h / 1d timeframes added to charts",
+      "Faster server-side data joins for account snapshots",
+    ],
+  },
+  {
+    id: "news-nova",
+    type: "news",
+    date: "2025-09-12T14:10:00Z",
+    title: "Introducing the Nova plan",
+    body: "Nova unlocks advanced analytics, higher data retention and priority routing. Existing Lunar users can upgrade in Settings.",
+    tags: ["General"],
+  },
+  {
+    id: "v0.6.3",
+    type: "changelog",
+    version: "0.6.3",
+    date: "2025-09-08T08:05:00Z",
+    title: "EA risk controls + trade rules",
+    tags: ["Expert Advisor", "Security"],
+    highlights: [
+      "Added daily and max drawdown guards (auto lock on breach)",
+      "Configurable trade rules (TP/SL presets, breakeven and trailing)",
+      "Receiver-side settings versioning and change propagation",
+    ],
+  },
+  {
+    id: "news-maintenance",
+    type: "news",
+    date: "2025-09-05T19:00:00Z",
+    title: "Scheduled maintenance completed",
+    body: "Infrastructure patches have been applied. No action required. If you notice connectivity issues, restart your receiver.",
+    tags: ["General"],
+  },
+  {
+    id: "v0.6.1",
+    type: "changelog",
+    version: "0.6.1",
+    date: "2025-08-30T10:00:00Z",
+    title: "Collector stability & API quality",
+    tags: ["Collectors", "API", "Bugfix", "Performance"],
+    highlights: [
+      "Improved order-queue ACK handling for slow terminals",
+      "Reduced payload sizes for metrics ingestion by ~28%",
+      "Fixed rare duplicate snapshot insertions",
+    ],
+  },
 ];
 
 /* --------------------------------------------
@@ -161,39 +157,6 @@ function useStatusBanner() {
 }
 
 /* --------------------------------------------
-   Sanity fetch (keine UI-Änderung)
---------------------------------------------- */
-
-const NOTES_QUERY = groq`*[_type == "note"] | order(releasedAt desc) {
-  "id": _id,
-  "type": type,
-  "version": version,
-  "date": releasedAt,
-  "title": title,
-  // Plain text aus Portable Text (falls vorhanden)
-  "body": select(defined(body) => pt::text(body), null),
-  "highlights": coalesce(highlights, []),
-  "tags": coalesce(tags, [])
-}`;
-
-function mapSanityToItems(rows: any[]): Item[] {
-  return (rows || [])
-    .map((x) => ({
-      id: String(x.id),
-      type: (x.type === "changelog" ? "changelog" : "news") as ItemType,
-      version: x.version || undefined,
-      date: x.date || new Date().toISOString(),
-      title: x.title || "",
-      body: x.body || undefined,
-      tags: Array.isArray(x.tags) ? x.tags.filter(Boolean) : [],
-      highlights: Array.isArray(x.highlights)
-        ? x.highlights.filter(Boolean)
-        : undefined,
-    }))
-    .filter((it) => it.title);
-}
-
-/* --------------------------------------------
    Page
 --------------------------------------------- */
 
@@ -204,57 +167,33 @@ export default function NewsPage() {
   const versionListRef = useRef<HTMLDivElement>(null);
   const status = useStatusBanner();
 
-  // Items aus Sanity laden (Fallback: lokale ITEMS)
-  const [items, setItems] = useState<Item[]>(ITEMS);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const rows = await client.fetch(NOTES_QUERY);
-        if (!cancelled && Array.isArray(rows) && rows.length) {
-          setItems(mapSanityToItems(rows));
-        }
-      } catch {
-        // Fallback auf lokale ITEMS
-      }
-    }
-    load();
-    // optional: Polling oder Revalidate hier nicht nötig
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const versions = useMemo(
     () =>
       [
         ...new Set(
-          items
-            .filter((i) => i.type === "changelog" && i.version)
-            .map((i) => i.version!)
+          ITEMS.filter((i) => i.type === "changelog" && i.version).map(
+            (i) => i.version!
+          )
         ),
       ].sort((a, b) => (a < b ? 1 : -1)),
-    [items]
+    []
   );
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return items
-      .filter((it) => {
-        if (typeFilter !== "all" && it.type !== typeFilter) return false;
-        if (activeTags.length) {
-          const hit = it.tags.some((t) => activeTags.includes(t));
-          if (!hit) return false;
-        }
-        if (!query) return true;
-        const hay = `${it.title} ${it.body || ""} ${(it.highlights || []).join(
-          " "
-        )} ${(it.tags || []).join(" ")}`.toLowerCase();
-        return hay.includes(query);
-      })
-      .sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [q, typeFilter, activeTags, items]);
+    return ITEMS.filter((it) => {
+      if (typeFilter !== "all" && it.type !== typeFilter) return false;
+      if (activeTags.length) {
+        const hit = it.tags.some((t) => activeTags.includes(t));
+        if (!hit) return false;
+      }
+      if (!query) return true;
+      const hay = `${it.title} ${it.body || ""} ${(it.highlights || []).join(
+        " "
+      )} ${(it.tags || []).join(" ")}`.toLowerCase();
+      return hay.includes(query);
+    }).sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [q, typeFilter, activeTags]);
 
   function toggleTag(tag: string) {
     setActiveTags((prev) =>
@@ -265,16 +204,16 @@ export default function NewsPage() {
   return (
     <div className="min-h-screen bg-[#0b0f14]">
       <Sidebar />
-      <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
-        <Image
-          src={"/assets/Transparent/logo-dash.png"}
-          alt="logo"
-          height={100}
-          width={250}
-          className="w-32 md:hidden block"
-        />
-        <MobileNav />
-      </div>
+        <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
+          <Image
+            src={"/assets/Transparent/logo-dash.png"}
+            alt="logo"
+            height={100}
+            width={250}
+            className="w-32 md:hidden block"
+          />
+          <MobileNav />
+        </div>
       <main className="md:ml-72 px-6 py-6">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
@@ -375,11 +314,7 @@ export default function NewsPage() {
 
         {/* STATUS BANNER (only when not OK) */}
         {status !== "ok" && (
-          <Link
-            href="https://status.pipvaro.com"
-            target="_blank"
-            rel="noreferrer noopener"
-          >
+          <Link href="https://status.pipvaro.com" target="_blank" rel="noreferrer noopener">
             <Card
               className={[
                 "mt-4 border shadow-md",
@@ -447,7 +382,7 @@ export default function NewsPage() {
                 <div className="absolute left-4 top-1 bottom-1 w-px bg-gradient-to-b from-amber-400/70 via-gray-700 to-gray-700 pointer-events-none" />
                 <ol className="space-y-4">
                   {versions.map((v, idx) => {
-                    const entry = items.find(
+                    const entry = ITEMS.find(
                       (i) => i.type === "changelog" && i.version === v
                     );
                     const latest = idx === 0;
@@ -490,8 +425,7 @@ export default function NewsPage() {
               </div>
               <p className="text-sm text-gray-400">
                 Want to suggest a note for the next release? Ping us in{" "}
-                <span className="text-indigo-300">#feedback</span> within our
-                discord server.
+                <span className="text-indigo-300">#feedback</span> within our discord server.
               </p>
             </Card>
           </div>
