@@ -1,21 +1,23 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import MobileNav from "@/components/MobileNav";
 import Image from "next/image";
 import Card from "@/components/packs/Card";
 import {
   CalendarDays,
-  Filter,
+  MapPin,
+  ChevronDown,
+  Download,
   AlertTriangle,
   CircleDot,
   Dot,
   Clock3,
-  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CalendarIcon } from "@heroicons/react/24/outline";
 
 /* ----------------------------- Types & helpers ---------------------------- */
 
@@ -23,8 +25,8 @@ type FFItem = {
   title: string;
   country?: string;
   impact?: "High" | "Medium" | "Low" | string;
-  date?: string; // e.g. "Sep 17"
-  time?: string; // e.g. "8:30am"
+  date?: string;
+  time?: string;
   timestamp?: number; // unix seconds
   previous?: string | null;
   forecast?: string | null;
@@ -37,7 +39,7 @@ type Event = {
   dt: Date; // local Date
   impact: "High" | "Medium" | "Low" | "Other";
   title: string;
-  country: string | null;
+  instrument: string | null; // country/currency label
   previous?: string | null;
   forecast?: string | null;
   actual?: string | null;
@@ -62,18 +64,36 @@ function sameDay(a: Date, b: Date) {
     a.getDate() === b.getDate()
   );
 }
-function fmtDayLabel(d: Date) {
-  return d.toLocaleDateString(undefined, {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-  });
-}
 function fmtTime(d: Date) {
   return d.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+function fmtDayShort(d: Date) {
+  return d.toLocaleDateString(undefined, { weekday: "short", day: "2-digit" });
+}
+function fmtRange(a: Date, b: Date) {
+  const sameMonth = a.getMonth() === b.getMonth();
+  const sameYear = a.getFullYear() === b.getFullYear();
+  const optA: Intl.DateTimeFormatOptions = {
+    day: "2-digit",
+    month: "short",
+    ...(sameYear ? {} : { year: "numeric" }),
+  };
+  const optB: Intl.DateTimeFormatOptions = {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  };
+  const sa = a.toLocaleDateString(undefined, optA);
+  const sb = b.toLocaleDateString(
+    undefined,
+    sameMonth && sameYear
+      ? { day: "2-digit", year: "numeric", month: "short" }
+      : optB
+  );
+  return `${sa} - ${sb}`;
 }
 function impactKey(x?: string): Event["impact"] {
   const v = String(x || "").toLowerCase();
@@ -82,129 +102,165 @@ function impactKey(x?: string): Event["impact"] {
   if (v.startsWith("low")) return "Low";
   return "Other";
 }
-function impactHue(i: Event["impact"]) {
-  if (i === "High") return "text-rose-400 border-rose-500/30 bg-rose-500/10";
+function impactPill(i: Event["impact"]) {
+  if (i === "High")
+    return "bg-rose-500/15 text-rose-300 border border-rose-500/30";
   if (i === "Medium")
-    return "text-amber-300 border-amber-500/30 bg-amber-500/10";
-  if (i === "Low") return "text-sky-300 border-sky-500/30 bg-sky-500/10";
-  return "text-gray-300 border-gray-600/30 bg-gray-600/10";
+    return "bg-amber-500/15 text-amber-300 border border-amber-500/30";
+  if (i === "Low") return "bg-sky-500/15 text-sky-300 border border-sky-500/30";
+  return "bg-gray-600/10 text-gray-300 border border-gray-600/30";
 }
-function impactDot(i: Event["impact"]) {
-  if (i === "High") return <AlertTriangle className="size-3.5" />;
-  if (i === "Medium") return <CircleDot className="size-3.5" />;
-  if (i === "Low") return <Dot className="size-4" />;
-  return <Dot className="size-4" />;
+function impactIcon(i: Event["impact"]) {
+  if (i === "High") return <AlertTriangle className="size-4" />;
+  if (i === "Medium") return <CircleDot className="size-4" />;
+  return <Dot className="size-5" />;
 }
 
 /* --------------------------------- Page ---------------------------------- */
 
 export default function CalendarPage() {
   const [loading, setLoading] = useState(false);
-  const [events, setEvents] = useState<Event[]>([]);
   const [err, setErr] = useState<string | null>(null);
-  const [stale, setStale] = useState(false);
+  const [events, setEvents] = useState<Event[]>([]);
+  const didAutoScroll = useRef(false); // <- auto-scroll only once
 
-  // filter: show low/medium/high
-  const [showLow, setShowLow] = useState(true);
-  const [showMed, setShowMed] = useState(true);
-  const [showHigh, setShowHigh] = useState(true);
+  // filters
+  const [fHigh, setFHigh] = useState(true);
+  const [fMed, setFMed] = useState(true);
+  const [fLow, setFLow] = useState(true);
+  const [hidePast, setHidePast] = useState(false);
+  const [instrument, setInstrument] = useState<string>("All");
 
-  // fetch current week feed via our cached API
+  // fetch (mit FF/TE behind /api/calendar/week)
   useEffect(() => {
-    let canceled = false;
-    async function load() {
+    let cancelled = false;
+    (async () => {
       try {
         setLoading(true);
         setErr(null);
-
         const r = await fetch("/api/calendar/week", { cache: "no-store" });
         const d = await r.json();
-        if (!d?.ok) throw new Error("feed failed");
-
-        setStale(Boolean(d.stale));
-
-        // Die ForexFactory-Datei ist ein Array von Items – d.items direkt nutzen.
-        const feed = d.items;
-        const arr: FFItem[] = Array.isArray(feed)
-          ? feed
-          : Array.isArray(feed?.result)
-            ? feed.result
-            : [];
+        if (!d?.ok || !Array.isArray(d.items)) throw new Error("feed failed");
+        const arr: FFItem[] = d.items;
 
         const normalized: Event[] = arr
           .map((x, idx) => {
-            const ts =
-              typeof x.timestamp === "number" ? x.timestamp * 1000 : undefined;
-            const dt =
-              ts && !Number.isNaN(ts)
-                ? new Date(ts)
-                : new Date(`${x.date} ${new Date().getFullYear()} ${x.time}`);
+            let dt: Date | null = null;
+            if (typeof x.timestamp === "number") {
+              const ms = x.timestamp * 1000;
+              if (Number.isFinite(ms)) dt = new Date(ms);
+            }
+            if (!dt && x.date && x.time) {
+              const t = new Date(
+                `${x.date} ${new Date().getFullYear()} ${x.time}`
+              );
+              if (!isNaN(t.getTime())) dt = t;
+            }
+            if (!dt && x.date) {
+              const t = new Date(x.date);
+              if (!isNaN(t.getTime())) dt = t;
+            }
+            if (!dt) return null;
+
             return {
-              id: `${ts || idx}-${x.title}`,
+              id: `${x.timestamp ?? idx}-${x.title}`,
               dt,
               impact: impactKey(x.impact),
               title: x.title,
-              country: x.country || x.currency || null,
+              instrument: x.country || x.currency || null,
               previous: x.previous ?? null,
               forecast: x.forecast ?? null,
               actual: x.actual ?? null,
-            };
+            } as Event;
           })
-          .filter((e) => Number.isFinite(e.dt.getTime()))
+          .filter((e): e is Event => !!e)
           .sort((a, b) => a.dt.getTime() - b.dt.getTime());
 
-        if (!canceled) setEvents(normalized);
-      } catch {
-        if (!canceled) setErr("Failed to load calendar feed.");
+        if (!cancelled) setEvents(normalized);
+      } catch (e) {
+        if (!cancelled) setErr("Failed to load calendar feed.");
       } finally {
-        if (!canceled) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    }
-    load();
+    })();
     return () => {
-      canceled = true;
+      cancelled = true;
     };
   }, []);
 
-  // current week days (Mon..Sun)
+  // week range + days
   const weekStart = useMemo(() => startOfWeek(new Date()), []);
+  const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
   const days = useMemo(
     () => [...Array(7)].map((_, i) => addDays(weekStart, i)),
     [weekStart]
   );
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local";
 
-  // filter by impact
+  // instruments from data
+  const instruments = useMemo(() => {
+    const set = new Set<string>();
+    events.forEach((e) => e.instrument && set.add(e.instrument));
+    return ["All", ...Array.from(set).sort()];
+  }, [events]);
+
+  // filtered
   const filtered = useMemo(() => {
+    const now = new Date();
     return events.filter((e) => {
-      if (e.impact === "High" && !showHigh) return false;
-      if (e.impact === "Medium" && !showMed) return false;
-      if (e.impact === "Low" && !showLow) return false;
+      if (hidePast && e.dt < now) return false;
+      if (!fHigh && e.impact === "High") return false;
+      if (!fMed && e.impact === "Medium") return false;
+      if (!fLow && e.impact === "Low") return false;
+      if (instrument !== "All" && e.instrument !== instrument) return false;
       return true;
     });
-  }, [events, showHigh, showLow, showMed]);
+  }, [events, fHigh, fMed, fLow, hidePast, instrument]);
 
-  // bucket by day (Index relativ zur Wochenbasis, robust an Monatsgrenzen)
+  // bucket by day (nur Events dieser Woche)
   const byDay = useMemo(() => {
-    const map: Record<number, Event[]> = {
-      0: [],
-      1: [],
-      2: [],
-      3: [],
-      4: [],
-      5: [],
-      6: [],
-    };
-    const base = weekStart.getTime();
-    for (const e of filtered) {
-      const idx = Math.floor((e.dt.getTime() - base) / 86_400_000); // ms -> Tage
-      if (idx >= 0 && idx < 7) map[idx].push(e);
-    }
-    for (const k of Object.keys(map)) {
-      const i = Number(k);
-      map[i].sort((a, b) => a.dt.getTime() - b.dt.getTime());
-    }
+    const map: Record<string, Event[]> = {};
+    days.forEach((d) => {
+      const k = new Date(
+        d.getFullYear(),
+        d.getMonth(),
+        d.getDate()
+      ).toDateString();
+      map[k] = [];
+    });
+    const weekEndNext = addDays(weekEnd, 1);
+    filtered.forEach((e) => {
+      if (e.dt >= weekStart && e.dt < weekEndNext) {
+        const key = new Date(
+          e.dt.getFullYear(),
+          e.dt.getMonth(),
+          e.dt.getDate()
+        ).toDateString();
+        if (map[key]) map[key].push(e);
+      }
+    });
+    Object.values(map).forEach((list) =>
+      list.sort((a, b) => a.dt.getTime() - b.dt.getTime())
+    );
     return map;
-  }, [filtered, weekStart]);
+  }, [filtered, days, weekStart, weekEnd]);
+
+  // --- NEW: auto-scroll to "today" on first load
+  useEffect(() => {
+    if (didAutoScroll.current) return;
+    // run after first paint to ensure anchors exist
+    const id = "today-anchor";
+    const doScroll = () => {
+      const el = document.getElementById(id);
+      if (el) {
+        didAutoScroll.current = true;
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+    // give the browser one frame
+    const t = setTimeout(doScroll, 0);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0b0f14]">
@@ -223,198 +279,275 @@ export default function CalendarPage() {
         <MobileNav />
       </div>
 
-      <main className="md:ml-72 px-6 py-6">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
-              <CalendarDays className="size-5 text-indigo-400" />
-              Economic Calendar
-            </h1>
-            <p className="text-sm text-gray-400">
-              Current week, grouped by day. Times are shown in your local
-              timezone.
-            </p>
-          </div>
+      <main className="md:ml-72 px-4 md:px-6 py-6 space-y-4">
+        {/* Header bar – FTMO-like */}
+        <div>
+          <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
+            <CalendarIcon className="size-5 text-indigo-400" />
+            Economic Calendar
+          </h1>
+          <p className="text-sm text-gray-400">
+            Stay updated with the latest economic events and their impact on the
+            markets.
+          </p>
         </div>
-
-        {/* Controls */}
-        <Card>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="text-xs text-gray-400 flex items-center gap-2">
-              <Filter className="size-4" /> Impact filter
+        <Card className="p-0 overflow-hidden hover:bg-gray-800/50">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between px-4 py-3 border-b border-gray-800">
+            <div className="flex items-center gap-3">
+              <button
+                className="rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700/30"
+                onClick={() => {
+                  const todayEl = document.getElementById("today-anchor");
+                  todayEl?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
+              >
+                Today
+              </button>
+              <div className="text-white font-medium">
+                {fmtRange(weekStart, weekEnd)}
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <FilterPill
-                active={showHigh}
-                onClick={() => setShowHigh((v) => !v)}
+
+            <div className="flex items-center">
+              <div className="hidden md:flex items-center gap-2 text-gray-300 text-sm px-2 py-1.5 rounded-md border border-gray-800">
+                <MapPin className="size-4 text-indigo-300" />
+                {tz}
+              </div>
+            </div>
+          </div>
+
+          {/* Day "tabs" */}
+          <div className="flex flex-wrap gap-2 px-4 py-3 border-b border-gray-800">
+            {days.map((d) => {
+              const isToday = sameDay(d, new Date());
+              return (
+                <a
+                  key={d.toISOString()}
+                  href={`#d-${d.toDateString()}`}
+                  className={cn(
+                    "min-w-[84px] text-center rounded-md px-3 py-1.5 text-sm border",
+                    isToday
+                      ? "bg-indigo-500/15 border-indigo-500 text-indigo-300"
+                      : "bg-[#0f1419] border-gray-800 text-gray-300 hover:border-gray-700"
+                  )}
+                >
+                  {fmtDayShort(d)}
+                </a>
+              );
+            })}
+          </div>
+
+          {/* Filters row */}
+          <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Impact */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-gray-400">Impact</span>
+              <CheckChip
+                active={fHigh}
+                onChange={() => setFHigh((v) => !v)}
                 color="rose"
                 icon={<AlertTriangle className="size-4" />}
-              >
-                High
-              </FilterPill>
-              <FilterPill
-                active={showMed}
-                onClick={() => setShowMed((v) => !v)}
+                label="High"
+              />
+              <CheckChip
+                active={fMed}
+                onChange={() => setFMed((v) => !v)}
                 color="amber"
                 icon={<CircleDot className="size-4" />}
-              >
-                Medium
-              </FilterPill>
-              <FilterPill
-                active={showLow}
-                onClick={() => setShowLow((v) => !v)}
+                label="Medium"
+              />
+              <CheckChip
+                active={fLow}
+                onChange={() => setFLow((v) => !v)}
                 color="sky"
                 icon={<Dot className="size-5" />}
-              >
-                Low
-              </FilterPill>
+                label="Low"
+              />
+            </div>
+
+            {/* Visibility */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-gray-400">Visibility</span>
+              <ToggleChip
+                active={hidePast}
+                onClick={() => setHidePast((v) => !v)}
+                label="Hide past news"
+              />
+            </div>
+
+            {/* Instrument */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-gray-400">Instrument</span>
+              <div className="relative">
+                <select
+                  value={instrument}
+                  onChange={(e) => setInstrument(e.target.value)}
+                  className="appearance-none bg-[#0f1419] border border-gray-800 text-gray-200 text-sm rounded-md pl-3 pr-7 py-1.5 outline-none hover:border-gray-700"
+                >
+                  {instruments.map((it) => (
+                    <option key={it} value={it}>
+                      {it}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
+              </div>
             </div>
           </div>
-
-          {stale && (
-            <div className="mt-3 text-[11px] text-amber-300">
-              Showing cached data (source is rate-limited and updates hourly).
-            </div>
-          )}
         </Card>
 
         {/* Loading / Error */}
         {loading && (
-          <Card className="mt-4">
+          <Card>
             <div className="py-8 text-center text-gray-400">
               Loading calendar…
             </div>
           </Card>
         )}
         {err && !loading && (
-          <Card className="mt-4">
+          <Card>
             <div className="py-8 text-center text-rose-300">{err}</div>
           </Card>
         )}
 
-        {/* Week grid */}
-        {!loading && !err && (
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-7 gap-4">
-            {days.map((d, idx) => {
-              const list = byDay[idx] || [];
-              const isToday = sameDay(d, new Date());
-              return (
-                <Card
-                  key={d.toISOString()}
-                  className={cn(
-                    "p-0 overflow-hidden",
-                    isToday && "ring-1 ring-indigo-500/50"
-                  )}
-                >
-                  {/* Day header */}
+        {/* Day sections (untereinander) */}
+        {!loading &&
+          !err &&
+          days.map((d) => {
+            const key = new Date(
+              d.getFullYear(),
+              d.getMonth(),
+              d.getDate()
+            ).toDateString();
+            const list = byDay[key] || [];
+            const isToday = sameDay(d, new Date());
+            return (
+              <section key={key} id={isToday ? "today-anchor" : `d-${key}`}>
+                {/* Day header */}
+                <div className="mt-2 mb-2 px-2">
                   <div
                     className={cn(
-                      "px-4 py-3 border-b border-gray-800 flex items-center justify-between",
-                      isToday ? "bg-indigo-500/10" : "bg-[#0f1419]"
+                      "inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium border",
+                      isToday
+                        ? "bg-indigo-500/15 border-indigo-500 text-indigo-300"
+                        : "bg-[#0f1419] border-gray-800 text-gray-200"
                     )}
                   >
-                    <div className="text-white font-medium">
-                      {fmtDayLabel(d)}
-                    </div>
+                    {d.toLocaleDateString(undefined, {
+                      weekday: "long",
+                      day: "2-digit",
+                      month: "short",
+                    })}
                     {isToday && (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                         Today
                       </span>
                     )}
                   </div>
+                </div>
 
-                  {/* Events */}
-                  <div className="p-3 space-y-2">
-                    {!list.length ? (
-                      <div className="text-xs text-gray-500 py-4 text-center">
-                        No events
-                      </div>
-                    ) : (
-                      list.map((e) => (
-                        <div
+                {/* Table like FTMO */}
+                {/* NOTE: hover explicitly disabled ONLY here */}
+                <Card className="p-0 overflow-hidden hover:shadow-none hover:bg-gray-800/50 hover:ring-0 transition-none">
+                  {/* header row */}
+                  <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 text-xs text-gray-400 border-b border-gray-800">
+                    <div className="col-span-6">Description</div>
+                    <div className="col-span-2">Instrument</div>
+                    <div className="col-span-2">Date</div>
+                    <div className="col-span-1 text-right">Forecast</div>
+                    <div className="col-span-1 text-right">Previous</div>
+                  </div>
+
+                  {!list.length ? (
+                    <div className="px-4 py-6 text-sm text-gray-500">
+                      No events
+                    </div>
+                  ) : (
+                    <ul>
+                      {list.map((e) => (
+                        <li
                           key={e.id}
                           className={cn(
-                            "rounded-md border px-3 py-2 text-sm",
-                            impactHue(e.impact)
+                            "grid grid-cols-1 md:grid-cols-12 gap-2 px-4 py-3 border-b border-gray-900/60",
+                            e.impact === "High" && "bg-rose-500/5"
                           )}
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={cn(
-                                    "inline-flex items-center justify-center size-5 rounded",
-                                    impactHue(e.impact)
-                                  )}
-                                >
-                                  {impactDot(e.impact)}
-                                </span>
-                                <span className="text-white truncate">
-                                  {e.title}
-                                </span>
-                              </div>
-                              <div className="mt-1 flex flex-wrap items-center gap-3 text-[12px] text-gray-300">
-                                <span className="inline-flex items-center gap-1">
-                                  <Clock3 className="size-3.5" />{" "}
-                                  {fmtTime(e.dt)}
-                                </span>
-                                {e.country && (
-                                  <span className="inline-flex items-center gap-1">
-                                    <Globe className="size-3.5" /> {e.country}
-                                  </span>
-                                )}
-                                {e.actual && (
-                                  <span className="text-emerald-300">
-                                    Actual: {e.actual}
-                                  </span>
-                                )}
-                                {e.forecast && (
-                                  <span className="text-indigo-300">
-                                    Forecast: {e.forecast}
-                                  </span>
-                                )}
-                                {e.previous && (
-                                  <span className="text-gray-400">
-                                    Prev: {e.previous}
-                                  </span>
-                                )}
-                              </div>
+                          {/* description + impact pill */}
+                          <div className="col-span-6 flex items-start gap-2">
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px]",
+                                impactPill(e.impact)
+                              )}
+                            >
+                              {impactIcon(e.impact)}
+                              {e.impact}
+                            </span>
+                            <div className="text-gray-100 leading-tight">
+                              {e.title}
                             </div>
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
 
-        {/* Attribution */}
-        <p className="text-[11px] text-gray-500 mt-6">
-          Data source: ForexFactory weekly calendar feed.
+                          {/* instrument */}
+                          <div className="col-span-2 text-gray-300">
+                            {e.instrument ?? "—"}
+                          </div>
+
+                          {/* time */}
+                          <div className="col-span-2 text-gray-300 inline-flex items-center gap-1">
+                            <Clock3 className="size-4 text-gray-400" />
+                            {fmtTime(e.dt)}
+                          </div>
+
+                          {/* forecast / previous (right aligned like FTMO) */}
+                          <div className="col-span-1 md:text-right text-gray-200">
+                            {e.forecast ?? "—"}
+                          </div>
+                          <div className="col-span-1 md:text-right text-gray-400">
+                            {e.previous ?? "—"}
+                          </div>
+
+                          {/* mobile extra row: actual (falls vorhanden) */}
+                          {e.actual && (
+                            <div className="md:hidden col-span-12 text-[12px] text-emerald-300 pt-1">
+                              Actual: {e.actual}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card>
+              </section>
+            );
+          })}
+
+        <p className="text-[11px] text-gray-500">
+          Source: ForexFactory & TradingEconomics (weekly feed). Times shown in{" "}
+          {tz}.
         </p>
       </main>
     </div>
   );
 }
 
-/* -------------------------------- Components ------------------------------ */
+/* -------------------------------- UI bits -------------------------------- */
 
-function FilterPill({
+function CheckChip({
   active,
-  onClick,
+  onChange,
   color,
   icon,
-  children,
+  label,
 }: {
   active: boolean;
-  onClick: () => void;
+  onChange: () => void;
   color: "rose" | "amber" | "sky";
   icon: React.ReactNode;
-  children: React.ReactNode;
+  label: string;
 }) {
   const activeCls =
     color === "rose"
@@ -424,9 +557,9 @@ function FilterPill({
         : "bg-sky-500/15 border-sky-500 text-sky-300";
   return (
     <button
-      onClick={onClick}
+      onClick={onChange}
       className={cn(
-        "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm border transition",
+        "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm border",
         active
           ? activeCls
           : "bg-[#0f1419] border-gray-800 text-gray-300 hover:border-gray-700"
@@ -434,7 +567,32 @@ function FilterPill({
       aria-pressed={active}
     >
       {icon}
-      {children}
+      {label}
+    </button>
+  );
+}
+
+function ToggleChip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm border",
+        active
+          ? "bg-indigo-500/15 border-indigo-500 text-indigo-300"
+          : "bg-[#0f1419] border-gray-800 text-gray-300 hover:border-gray-700"
+      )}
+      aria-pressed={active}
+    >
+      {active ? "✓" : ""} {label}
     </button>
   );
 }
