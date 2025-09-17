@@ -23,7 +23,7 @@ import Image from "next/image";
 import MobileNav from "@/components/MobileNav";
 
 /* --------------------------------------------
-   Dummy data (maintain directly in code)
+   Types
 --------------------------------------------- */
 
 type ItemType = "news" | "changelog";
@@ -36,8 +36,12 @@ type Item = {
   title: string;
   body?: string;
   tags: string[];
-  highlights?: string[]; // bullet points
+  highlights?: string[];
 };
+
+/* --------------------------------------------
+   Fallback (falls API down)
+--------------------------------------------- */
 
 const TAGS = [
   "Expert Advisor",
@@ -50,7 +54,7 @@ const TAGS = [
   "Security",
 ] as const;
 
-const ITEMS: Item[] = [
+const ITEMS_FALLBACK: Item[] = [
   {
     id: "v0.7.0",
     type: "changelog",
@@ -63,48 +67,6 @@ const ITEMS: Item[] = [
       "Balance / Equity / Margin Level charts with smoother scales",
       "4h / 1d timeframes added to charts",
       "Faster server-side data joins for account snapshots",
-    ],
-  },
-  {
-    id: "news-nova",
-    type: "news",
-    date: "2025-09-12T14:10:00Z",
-    title: "Introducing the Nova plan",
-    body: "Nova unlocks advanced analytics, higher data retention and priority routing. Existing Lunar users can upgrade in Settings.",
-    tags: ["General"],
-  },
-  {
-    id: "v0.6.3",
-    type: "changelog",
-    version: "0.6.3",
-    date: "2025-09-08T08:05:00Z",
-    title: "EA risk controls + trade rules",
-    tags: ["Expert Advisor", "Security"],
-    highlights: [
-      "Added daily and max drawdown guards (auto lock on breach)",
-      "Configurable trade rules (TP/SL presets, breakeven and trailing)",
-      "Receiver-side settings versioning and change propagation",
-    ],
-  },
-  {
-    id: "news-maintenance",
-    type: "news",
-    date: "2025-09-05T19:00:00Z",
-    title: "Scheduled maintenance completed",
-    body: "Infrastructure patches have been applied. No action required. If you notice connectivity issues, restart your receiver.",
-    tags: ["General"],
-  },
-  {
-    id: "v0.6.1",
-    type: "changelog",
-    version: "0.6.1",
-    date: "2025-08-30T10:00:00Z",
-    title: "Collector stability & API quality",
-    tags: ["Collectors", "API", "Bugfix", "Performance"],
-    highlights: [
-      "Improved order-queue ACK handling for slow terminals",
-      "Reduced payload sizes for metrics ingestion by ~28%",
-      "Fixed rare duplicate snapshot insertions",
     ],
   },
 ];
@@ -139,7 +101,6 @@ function useStatusBanner() {
             worst = worst === null ? s : Math.min(worst, s);
           }
         }
-        // Uptime Kuma codes: 1=up, 0=down, 3=maintenance (status-page)
         if (worst === 0) setState("down");
         else if (worst === 3) setState("maintenance");
         else setState("ok");
@@ -157,43 +118,98 @@ function useStatusBanner() {
 }
 
 /* --------------------------------------------
+   Sanity fetch (über /api/news)
+--------------------------------------------- */
+
+type ApiResp = {
+  ok: boolean;
+  items: Item[];
+  tags?: string[];
+  versions?: string[];
+};
+
+function useSanityNews() {
+  const [items, setItems] = useState<Item[] | null>(null);
+  const [versions, setVersions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const r = await fetch(`/api/news?limit=100`, { cache: "no-store" });
+        const d: ApiResp = await r
+          .json()
+          .catch(() => ({ ok: false, items: [] }));
+        if (!cancelled) {
+          setItems(
+            Array.isArray(d.items) && d.items.length ? d.items : ITEMS_FALLBACK
+          );
+          setVersions(Array.isArray(d.versions) ? d.versions : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setItems(ITEMS_FALLBACK);
+          setVersions([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { items, versions, loading };
+}
+
+/* --------------------------------------------
    Page
 --------------------------------------------- */
 
 export default function NewsPage() {
+  const { items, versions: apiVersions } = useSanityNews();
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState<ItemType | "all">("all");
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const versionListRef = useRef<HTMLDivElement>(null);
   const status = useStatusBanner();
 
-  const versions = useMemo(
-    () =>
-      [
-        ...new Set(
-          ITEMS.filter((i) => i.type === "changelog" && i.version).map(
-            (i) => i.version!
-          )
-        ),
-      ].sort((a, b) => (a < b ? 1 : -1)),
-    []
-  );
+  const baseItems: Item[] = items ?? ITEMS_FALLBACK;
+
+  // Version-History aus API (Fallback: aus Items ableiten)
+  const versions = useMemo(() => {
+    const fromApi = apiVersions && apiVersions.length ? apiVersions : null;
+    if (fromApi) return fromApi;
+    return Array.from(
+      new Set(
+        baseItems
+          .filter((i) => i.type === "changelog" && i.version)
+          .map((i) => i.version as string)
+      )
+    ).sort((a, b) => (a < b ? 1 : -1));
+  }, [apiVersions, baseItems]);
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return ITEMS.filter((it) => {
-      if (typeFilter !== "all" && it.type !== typeFilter) return false;
-      if (activeTags.length) {
-        const hit = it.tags.some((t) => activeTags.includes(t));
-        if (!hit) return false;
-      }
-      if (!query) return true;
-      const hay = `${it.title} ${it.body || ""} ${(it.highlights || []).join(
-        " "
-      )} ${(it.tags || []).join(" ")}`.toLowerCase();
-      return hay.includes(query);
-    }).sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [q, typeFilter, activeTags]);
+    return baseItems
+      .filter((it) => {
+        if (typeFilter !== "all" && it.type !== typeFilter) return false;
+        if (activeTags.length) {
+          const hit = it.tags?.some((t) => activeTags.includes(t));
+          if (!hit) return false;
+        }
+        if (!query) return true;
+        const hay =
+          `${it.title} ${it.body || ""} ${(it.highlights || []).join(" ")} ${(it.tags || []).join(" ")}`.toLowerCase();
+        return hay.includes(query);
+      })
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [q, typeFilter, activeTags, baseItems]);
 
   function toggleTag(tag: string) {
     setActiveTags((prev) =>
@@ -204,16 +220,16 @@ export default function NewsPage() {
   return (
     <div className="min-h-screen bg-[#0b0f14]">
       <Sidebar />
-        <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
-          <Image
-            src={"/assets/Transparent/logo-dash.png"}
-            alt="logo"
-            height={100}
-            width={250}
-            className="w-32 md:hidden block"
-          />
-          <MobileNav />
-        </div>
+      <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
+        <Image
+          src={"/assets/Transparent/logo-dash.png"}
+          alt="logo"
+          height={100}
+          width={250}
+          className="w-32 md:hidden block"
+        />
+        <MobileNav />
+      </div>
       <main className="md:ml-72 px-6 py-6">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
@@ -312,9 +328,13 @@ export default function NewsPage() {
           </div>
         </Card>
 
-        {/* STATUS BANNER (only when not OK) */}
+        {/* STATUS BANNER */}
         {status !== "ok" && (
-          <Link href="https://status.pipvaro.com" target="_blank" rel="noreferrer noopener">
+          <Link
+            href="https://status.pipvaro.com"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
             <Card
               className={[
                 "mt-4 border shadow-md",
@@ -351,7 +371,7 @@ export default function NewsPage() {
           </Link>
         )}
 
-        {/* Content grid */}
+        {/* Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
           {/* Feed */}
           <div className="xl:col-span-2 space-y-4">
@@ -376,19 +396,16 @@ export default function NewsPage() {
                 <div className="text-white font-medium">Version history</div>
               </div>
 
-              {/* Timeline with clearer spacing & connector */}
               <div className="relative pl-10">
-                {/* vertical connector line */}
                 <div className="absolute left-4 top-1 bottom-1 w-px bg-gradient-to-b from-amber-400/70 via-gray-700 to-gray-700 pointer-events-none" />
                 <ol className="space-y-4">
                   {versions.map((v, idx) => {
-                    const entry = ITEMS.find(
+                    const entry = baseItems.find(
                       (i) => i.type === "changelog" && i.version === v
                     );
                     const latest = idx === 0;
                     return (
                       <li key={v} className="relative pl-6">
-                        {/* dot */}
                         <span
                           className={[
                             "absolute left-3 top-1.5 size-3 rounded-full ring-2 ring-[#0b0f14]",
@@ -425,7 +442,8 @@ export default function NewsPage() {
               </div>
               <p className="text-sm text-gray-400">
                 Want to suggest a note for the next release? Ping us in{" "}
-                <span className="text-indigo-300">#feedback</span> within our discord server.
+                <span className="text-indigo-300">#pipvaro-feedback</span> within our
+                discord server.
               </p>
             </Card>
           </div>
@@ -486,9 +504,8 @@ function ItemCard({ it }: { it: Item }) {
           </ul>
         )}
 
-        {/* tags */}
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {it.tags.map((t) => (
+          {(it.tags || []).map((t) => (
             <span
               key={t}
               className="text-[11px] px-2 py-0.5 rounded-md bg-[#0f1419] border border-gray-800 text-gray-300"
