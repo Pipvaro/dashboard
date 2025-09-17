@@ -279,6 +279,15 @@ export default function CalendarPage() {
         <MobileNav />
       </div>
 
+      <div className="bg-[#3f4bf2] w-full py-2 px-4 text-white md:ml-72">
+        <p className="text-sm">
+          🚀 Welcome to Pipvaro! Your trading automation starts here.{" "}
+          <strong>
+            Since we are currently in beta phase some features may not be
+            available.
+          </strong>
+        </p>
+      </div>
       <main className="md:ml-72 px-4 md:px-6 py-6 space-y-4">
         {/* Header bar – FTMO-like */}
         <div>
