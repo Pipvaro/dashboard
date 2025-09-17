@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,12 @@ function CopyLine({ label, value }: { label: string; value?: string }) {
   );
 }
 
+type EaLatest = {
+  url: string;
+  version?: string;
+  filename?: string;
+};
+
 export default function NewReceiverDrawer() {
   const router = useRouter();
   const [isRefreshing, startTransition] = useTransition();
@@ -59,6 +65,10 @@ export default function NewReceiverDrawer() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // EA (aus Sanity via interner API)
+  const [ea, setEa] = useState<EaLatest | null>(null);
+  const [eaLoading, setEaLoading] = useState(false);
+
   function refreshPage() {
     startTransition(() => router.refresh()); // re-render der Server-Seite
   }
@@ -67,16 +77,52 @@ export default function NewReceiverDrawer() {
     setLoading(true);
     setErr(null);
     setResp(null);
-    const r = await fetch("/api/receivers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) setErr(d?.message ?? "Failed to create receiver");
-    else setResp(d);
-    setLoading(false);
+    try {
+      const r = await fetch("/api/receivers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) setErr(d?.message ?? "Failed to create receiver");
+      else setResp(d);
+    } finally {
+      setLoading(false);
+    }
   }
+
+  // Wenn der Drawer offen ist und ein Receiver erstellt wurde,
+  // lade die aktuell aktive EA aus Sanity (über /api/ea/latest).
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEa() {
+      if (!open || !resp) return;
+      setEaLoading(true);
+      try {
+        const r = await fetch("/api/ea/latest", { cache: "no-store" });
+        const d = await r.json().catch(() => null);
+        if (!cancelled && d?.ok && d?.url) {
+          setEa({
+            url: String(d.url),
+            version: d.version ? String(d.version) : undefined,
+            filename: d.filename ? String(d.filename) : undefined,
+          });
+        } else if (!cancelled) {
+          setEa(null);
+        }
+      } catch {
+        if (!cancelled) setEa(null);
+      } finally {
+        if (!cancelled) setEaLoading(false);
+      }
+    }
+
+    loadEa();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, resp]);
 
   return (
     <Sheet
@@ -89,6 +135,8 @@ export default function NewReceiverDrawer() {
           refreshPage();
           setResp(null);
           setName("");
+          setEa(null);
+          setEaLoading(false);
         }
       }}
     >
@@ -150,11 +198,27 @@ export default function NewReceiverDrawer() {
                   label="Master URL"
                   value={resp.license?.master_url || "https://api.pipvaro.com"}
                 />
-                <Button
-                  className="w-full bg-[#3f4bf2] hover:bg-[#3f4bf2]/80"
-                >
-                  Download EA
-                </Button>
+
+                {/* Download EA – aktiviert sobald /api/ea/latest eine URL liefert */}
+                {ea?.url ? (
+                  <a
+                    href={ea.url}
+                    download={ea.filename || "PipvaroEA.ex5"}
+                    className="w-full"
+                  >
+                    <Button className="w-full bg-[#3f4bf2] hover:bg-[#3f4bf2]/80">
+                      {`Download EA${ea.version ? ` v${ea.version}` : ""}`}
+                    </Button>
+                  </a>
+                ) : (
+                  <Button
+                    className="w-full bg-[#3f4bf2] hover:bg-[#3f4bf2]/80"
+                    disabled
+                    title={eaLoading ? "Loading EA…" : "EA not available"}
+                  >
+                    {eaLoading ? "Loading EA…" : "Download EA"}
+                  </Button>
+                )}
               </div>
               <p className="text-xs text-gray-500">
                 Enter those values in to MT5 EA: <i>InpMasterUrl</i>,{" "}
@@ -182,6 +246,8 @@ export default function NewReceiverDrawer() {
                   refreshPage(); // auch beim Done-Button refresht die Seite
                   setResp(null);
                   setName("");
+                  setEa(null);
+                  setEaLoading(false);
                 }}
               >
                 Done

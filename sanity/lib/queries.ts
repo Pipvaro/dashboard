@@ -26,3 +26,12 @@ export const CHANGELOGS_QUERY = groq`
 *[_type == "changelog" && defined(version)]
 | order(date desc){ version, _id, date }
 `;
+
+export const EA_LATEST_QUERY = groq`
+*[_type == "eaRelease"]
+| order(active desc, releasedAt desc)[0]{
+  version,
+  "assetUrl": file.asset->url,
+  "filename": file.asset->originalFilename
+}
+`;

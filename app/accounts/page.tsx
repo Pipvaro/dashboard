@@ -92,7 +92,7 @@ export default async function Home() {
 
                 return (
                   <Link href={`/accounts/${acc.id}`} key={a.receiver_id}>
-                    <Card>
+                    <Card className="mb-3">
                       <div className="flex items-center justify-between gap-4">
                         {/* left */}
                         <div className="min-w-0">
