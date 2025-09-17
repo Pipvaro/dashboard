@@ -21,6 +21,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import MobileNav from "@/components/MobileNav";
+import { PaperClipIcon } from "@heroicons/react/24/outline";
 
 /* --------------------------------------------
    Types
@@ -235,7 +236,7 @@ export default function NewsPage() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
-              <Newspaper className="size-5 text-indigo-400" />
+              <PaperClipIcon className="size-5 text-indigo-400" />
               Changelogs & News
             </h1>
             <p className="text-sm text-gray-400">
@@ -442,8 +443,8 @@ export default function NewsPage() {
               </div>
               <p className="text-sm text-gray-400">
                 Want to suggest a note for the next release? Ping us in{" "}
-                <span className="text-indigo-300">#pipvaro-feedback</span> within our
-                discord server.
+                <span className="text-indigo-300">#pipvaro-feedback</span>{" "}
+                within our discord server.
               </p>
             </Card>
           </div>
