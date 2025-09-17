@@ -19,8 +19,8 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ aid: string }> }
 ) {
+  const { aid } = await ctx.params;
   try {
-    const { aid } = await ctx.params;
     const url = new URL(req.url);
     const limit = Math.min(
       200,

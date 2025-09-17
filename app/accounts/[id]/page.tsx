@@ -6,7 +6,6 @@ import { cookies, headers } from "next/headers";
 import Sidebar from "@/components/Sidebar";
 
 async function getAccount(id: string) {
-  // Origin robust bestimmen (Prod/Local, Proxy etc.)
   const h = await headers();
   const proto = h.get("x-forwarded-proto") || "http";
   const host = h.get("host") || "localhost:3000";
@@ -14,8 +13,6 @@ async function getAccount(id: string) {
     (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/, "") ||
     `${proto}://${host}`;
 
-  // Eingehende Cookies an die interne API weiterreichen,
-  // damit diese wiederum dein Backend mit Bearer authen kann.
   const jar = await cookies();
   const cookieHeader = jar
     .getAll()
@@ -30,10 +27,14 @@ async function getAccount(id: string) {
   const data = await res?.json().catch(() => null);
   return data?.item ?? null;
 }
-
-export default async function Page({ params }: { params: { id: string } }) {
-  const id = decodeURIComponent(params.id);
-  const item = await getAccount(id);
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params; // await also works if it's not a real Promise
+  const safeId = decodeURIComponent(id);
+  const item = await getAccount(safeId);
 
   return (
     <div className="w-full h-screen flex">
@@ -50,10 +51,8 @@ export default async function Page({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        {/* Summary (nur Account-Daten) */}
         <Card>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Account facts */}
             <div>
               <div className="text-white font-medium mb-3">Account</div>
               <dl className="text-sm text-gray-300 grid grid-cols-2 gap-y-2">
@@ -79,7 +78,6 @@ export default async function Page({ params }: { params: { id: string } }) {
               </dl>
             </div>
 
-            {/* Balances */}
             <div>
               <div className="text-white font-medium mb-3">Balances</div>
               <div className="grid grid-cols-2 gap-3">
@@ -105,7 +103,6 @@ export default async function Page({ params }: { params: { id: string } }) {
               </div>
             </div>
 
-            {/* Status */}
             <div>
               <div className="text-white font-medium mb-3">Status</div>
               <div className="grid grid-cols-2 gap-3">
@@ -122,7 +119,6 @@ export default async function Page({ params }: { params: { id: string } }) {
           </div>
         </Card>
 
-        {/* Live-Kacheln (Charts + Tabellen, 5s Auto-Refresh) */}
         <AccountLive
           aid={id}
           receiverId={item?.receiver_id ?? null}

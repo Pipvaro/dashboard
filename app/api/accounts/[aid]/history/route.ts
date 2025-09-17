@@ -9,10 +9,10 @@ const API = (process.env.AUTH_API_BASE || "https://api.pipvaro.com").replace(
 
 export async function GET(
   req: Request,
-  ctx: { params: { aid: string } } | { params: Promise<{ aid: string }> }
+  ctx: { params: Promise<{ aid: string }> }
 ) {
+  const { aid } = await ctx.params;
   try {
-    const { aid } = "then" in ctx.params ? await ctx.params : ctx.params;
     const url = new URL(req.url);
     const limit = Number(url.searchParams.get("limit") || 150);
     const at = (await cookies()).get("access_token")?.value || "";

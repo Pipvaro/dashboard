@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -16,13 +16,18 @@
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@sanity/client": "^7.11.1",
+    "@sanity/vision": "^4.9.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "groq": "^4.9.0",
     "lucide-react": "^0.542.0",
     "next": "15.5.2",
+    "next-sanity": "^11.1.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "recharts": "^3.2.1",
+    "sanity": "^4.9.0",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
