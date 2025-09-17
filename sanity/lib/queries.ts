@@ -35,3 +35,11 @@ export const EA_LATEST_QUERY = groq`
   "filename": file.asset->originalFilename
 }
 `;
+
+export const SITE_SETTINGS_QUERY = groq`*[_type == "siteSettings"][0]{
+  bannerEnabled,
+  bannerTone,
+  bannerText,
+  bannerLinkText,
+  bannerLinkUrl
+}`;

@@ -22,6 +22,7 @@ import Link from "next/link";
 import Image from "next/image";
 import MobileNav from "@/components/MobileNav";
 import { PaperClipIcon } from "@heroicons/react/24/outline";
+import SiteBanner from "@/components/SiteBanner";
 
 /* --------------------------------------------
    Types
@@ -231,231 +232,225 @@ export default function NewsPage() {
         />
         <MobileNav />
       </div>
-        <div className="bg-[#3f4bf2] w-full py-2 px-4 text-white md:ml-72">
-          <p className="text-sm">
-            🚀 Welcome to Pipvaro! Your trading automation starts here.{" "}
-            <strong>
-              Since we are currently in beta phase some features may not be
-              available.
-            </strong>
-          </p>
-        </div>
-      <main className="md:ml-72 px-6 py-6">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
-              <PaperClipIcon className="size-5 text-indigo-400" />
-              Changelogs & News
-            </h1>
-            <p className="text-sm text-gray-400">
-              Release notes, platform updates and product announcements.
-            </p>
+      <main className="md:ml-72">
+        <SiteBanner />
+        <div className="px-6 py-6">
+          {/* Header */}
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
+                <PaperClipIcon className="size-5 text-indigo-400" />
+                Changelogs & News
+              </h1>
+              <p className="text-sm text-gray-400">
+                Release notes, platform updates and product announcements.
+              </p>
+            </div>
+            <a
+              href="#versions"
+              onClick={(e) => {
+                e.preventDefault();
+                versionListRef.current?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="text-xs text-indigo-300 hover:text-indigo-200 inline-flex items-center gap-1"
+            >
+              <HistoryIcon className="size-4" />
+              Jump to version history
+            </a>
           </div>
-          <a
-            href="#versions"
-            onClick={(e) => {
-              e.preventDefault();
-              versionListRef.current?.scrollIntoView({ behavior: "smooth" });
-            }}
-            className="text-xs text-indigo-300 hover:text-indigo-200 inline-flex items-center gap-1"
-          >
-            <HistoryIcon className="size-4" />
-            Jump to version history
-          </a>
-        </div>
 
-        {/* Controls */}
-        <Card>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            {/* Search */}
-            <div className="relative w-full md:w-1/2">
-              <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search titles, notes and tags…"
-                className="w-full bg-[#0f1419] text-sm text-white rounded-lg pl-9 pr-3 py-2 border border-gray-800 outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+          {/* Controls */}
+          <Card>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              {/* Search */}
+              <div className="relative w-full md:w-1/2">
+                <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search titles, notes and tags…"
+                  className="w-full bg-[#0f1419] text-sm text-white rounded-lg pl-9 pr-3 py-2 border border-gray-800 outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Type filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400 hidden md:inline">
+                  Type
+                </span>
+                <TypePill
+                  active={typeFilter === "all"}
+                  onClick={() => setTypeFilter("all")}
+                  icon={<Filter className="size-4" />}
+                >
+                  All
+                </TypePill>
+                <TypePill
+                  active={typeFilter === "news"}
+                  onClick={() => setTypeFilter("news")}
+                  icon={<Megaphone className="size-4" />}
+                >
+                  News
+                </TypePill>
+                <TypePill
+                  active={typeFilter === "changelog"}
+                  onClick={() => setTypeFilter("changelog")}
+                  icon={<Code2 className="size-4" />}
+                >
+                  Changelog
+                </TypePill>
+              </div>
             </div>
 
-            {/* Type filter */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 hidden md:inline">
-                Type
+            {/* Tags */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-400 inline-flex items-center gap-1 mr-1">
+                <TagIcon className="size-3.5" /> Tags
               </span>
-              <TypePill
-                active={typeFilter === "all"}
-                onClick={() => setTypeFilter("all")}
-                icon={<Filter className="size-4" />}
-              >
-                All
-              </TypePill>
-              <TypePill
-                active={typeFilter === "news"}
-                onClick={() => setTypeFilter("news")}
-                icon={<Megaphone className="size-4" />}
-              >
-                News
-              </TypePill>
-              <TypePill
-                active={typeFilter === "changelog"}
-                onClick={() => setTypeFilter("changelog")}
-                icon={<Code2 className="size-4" />}
-              >
-                Changelog
-              </TypePill>
+              {TAGS.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => toggleTag(t)}
+                  className={[
+                    "px-2 py-1 rounded-md text-xs border",
+                    activeTags.includes(t)
+                      ? "bg-indigo-500/15 border-indigo-500 text-indigo-300"
+                      : "bg-[#0f1419] border-gray-800 text-gray-300 hover:border-gray-700",
+                  ].join(" ")}
+                >
+                  {t}
+                </button>
+              ))}
+              {!!activeTags.length && (
+                <button
+                  onClick={() => setActiveTags([])}
+                  className="text-xs text-gray-400 hover:text-gray-200 ml-1"
+                >
+                  Clear
+                </button>
+              )}
             </div>
-          </div>
+          </Card>
 
-          {/* Tags */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-400 inline-flex items-center gap-1 mr-1">
-              <TagIcon className="size-3.5" /> Tags
-            </span>
-            {TAGS.map((t) => (
-              <button
-                key={t}
-                onClick={() => toggleTag(t)}
+          {/* STATUS BANNER */}
+          {status !== "ok" && (
+            <Link
+              href="https://status.pipvaro.com"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <Card
                 className={[
-                  "px-2 py-1 rounded-md text-xs border",
-                  activeTags.includes(t)
-                    ? "bg-indigo-500/15 border-indigo-500 text-indigo-300"
-                    : "bg-[#0f1419] border-gray-800 text-gray-300 hover:border-gray-700",
+                  "mt-4 border shadow-md",
+                  status === "down"
+                    ? "bg-[#3b0f14] border-rose-500/60 shadow-[0_0_0_1px_rgba(244,63,94,0.35)]"
+                    : "bg-[#2e1b05] border-amber-500/60 shadow-[0_0_0_1px_rgba(245,158,11,0.35)]",
                 ].join(" ")}
               >
-                {t}
-              </button>
-            ))}
-            {!!activeTags.length && (
-              <button
-                onClick={() => setActiveTags([])}
-                className="text-xs text-gray-400 hover:text-gray-200 ml-1"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </Card>
-
-        {/* STATUS BANNER */}
-        {status !== "ok" && (
-          <Link
-            href="https://status.pipvaro.com"
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            <Card
-              className={[
-                "mt-4 border shadow-md",
-                status === "down"
-                  ? "bg-[#3b0f14] border-rose-500/60 shadow-[0_0_0_1px_rgba(244,63,94,0.35)]"
-                  : "bg-[#2e1b05] border-amber-500/60 shadow-[0_0_0_1px_rgba(245,158,11,0.35)]",
-              ].join(" ")}
-            >
-              <div className="flex items-start gap-3">
-                {status === "down" ? (
-                  <AlertTriangle className="size-5 text-rose-300 mt-0.5 shrink-0" />
-                ) : (
-                  <Wrench className="size-5 text-amber-300 mt-0.5 shrink-0" />
-                )}
-                <div>
-                  <div
-                    className={[
-                      "font-medium",
-                      status === "down" ? "text-rose-200" : "text-amber-200",
-                    ].join(" ")}
-                  >
-                    {status === "down"
-                      ? "Incident detected"
-                      : "Maintenance mode"}
+                <div className="flex items-start gap-3">
+                  {status === "down" ? (
+                    <AlertTriangle className="size-5 text-rose-300 mt-0.5 shrink-0" />
+                  ) : (
+                    <Wrench className="size-5 text-amber-300 mt-0.5 shrink-0" />
+                  )}
+                  <div>
+                    <div
+                      className={[
+                        "font-medium",
+                        status === "down" ? "text-rose-200" : "text-amber-200",
+                      ].join(" ")}
+                    >
+                      {status === "down"
+                        ? "Incident detected"
+                        : "Maintenance mode"}
+                    </div>
+                    <p className="text-sm text-gray-100">
+                      {status === "down"
+                        ? "Some services are currently unavailable. Our team is currently investigating the issue. We apologize for the inconvenience."
+                        : "Planned maintenance is in progress. Minor interruptions are expected. Please be patient until we are back online with full service."}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-100">
-                    {status === "down"
-                      ? "Some services are currently unavailable. Our team is currently investigating the issue. We apologize for the inconvenience."
-                      : "Planned maintenance is in progress. Minor interruptions are expected. Please be patient until we are back online with full service."}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </Link>
-        )}
-
-        {/* Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
-          {/* Feed */}
-          <div className="xl:col-span-2 space-y-4">
-            {filtered.map((it) => (
-              <ItemCard key={it.id} it={it} />
-            ))}
-            {!filtered.length && (
-              <Card>
-                <div className="py-10 text-center text-gray-400">
-                  No entries match your filters.
                 </div>
               </Card>
-            )}
-          </div>
+            </Link>
+          )}
 
-          {/* Version history */}
-          <div className="xl:col-span-1">
-            <div ref={versionListRef} id="versions" />
-            <Card>
-              <div className="flex items-center gap-2 mb-3">
-                <HistoryIcon className="size-4 text-amber-400" />
-                <div className="text-white font-medium">Version history</div>
-              </div>
+          {/* Grid */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
+            {/* Feed */}
+            <div className="xl:col-span-2 space-y-4">
+              {filtered.map((it) => (
+                <ItemCard key={it.id} it={it} />
+              ))}
+              {!filtered.length && (
+                <Card>
+                  <div className="py-10 text-center text-gray-400">
+                    No entries match your filters.
+                  </div>
+                </Card>
+              )}
+            </div>
 
-              <div className="relative pl-10">
-                <div className="absolute left-4 top-1 bottom-1 w-px bg-gradient-to-b from-amber-400/70 via-gray-700 to-gray-700 pointer-events-none" />
-                <ol className="space-y-4">
-                  {versions.map((v, idx) => {
-                    const entry = baseItems.find(
-                      (i) => i.type === "changelog" && i.version === v
-                    );
-                    const latest = idx === 0;
-                    return (
-                      <li key={v} className="relative pl-6">
-                        <span
-                          className={[
-                            "absolute left-3 top-1.5 size-3 rounded-full ring-2 ring-[#0b0f14]",
-                            latest
-                              ? "bg-amber-400 shadow-[0_0_0_3px_rgba(245,158,11,0.25)]"
-                              : "bg-gray-500",
-                          ].join(" ")}
-                        />
-                        <a
-                          href={`#${entry?.id || v}`}
-                          className="text-sm text-white hover:text-amber-300 font-medium ml-2"
-                        >
-                          v{v}
-                        </a>
-                        {latest && (
-                          <span className="ml-2 text-[10px] rounded px-1.5 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                            Latest
-                          </span>
-                        )}
-                        <div className="text-xs text-gray-400 mt-0.5 ml-2">
-                          {entry ? timeAgo(entry.date) : ""}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </div>
-            </Card>
+            {/* Version history */}
+            <div className="xl:col-span-1">
+              <div ref={versionListRef} id="versions" />
+              <Card>
+                <div className="flex items-center gap-2 mb-3">
+                  <HistoryIcon className="size-4 text-amber-400" />
+                  <div className="text-white font-medium">Version history</div>
+                </div>
 
-            <Card className="mt-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="size-4 text-indigo-400" />
-                <div className="text-white font-medium">Contribute</div>
-              </div>
-              <p className="text-sm text-gray-400">
-                Want to suggest a note for the next release? Ping us in{" "}
-                <span className="text-indigo-300">#pipvaro-feedback</span>{" "}
-                within our discord server.
-              </p>
-            </Card>
+                <div className="relative pl-10">
+                  <div className="absolute left-4 top-1 bottom-1 w-px bg-gradient-to-b from-amber-400/70 via-gray-700 to-gray-700 pointer-events-none" />
+                  <ol className="space-y-4">
+                    {versions.map((v, idx) => {
+                      const entry = baseItems.find(
+                        (i) => i.type === "changelog" && i.version === v
+                      );
+                      const latest = idx === 0;
+                      return (
+                        <li key={v} className="relative pl-6">
+                          <span
+                            className={[
+                              "absolute left-3 top-1.5 size-3 rounded-full ring-2 ring-[#0b0f14]",
+                              latest
+                                ? "bg-amber-400 shadow-[0_0_0_3px_rgba(245,158,11,0.25)]"
+                                : "bg-gray-500",
+                            ].join(" ")}
+                          />
+                          <a
+                            href={`#${entry?.id || v}`}
+                            className="text-sm text-white hover:text-amber-300 font-medium ml-2"
+                          >
+                            v{v}
+                          </a>
+                          {latest && (
+                            <span className="ml-2 text-[10px] rounded px-1.5 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                              Latest
+                            </span>
+                          )}
+                          <div className="text-xs text-gray-400 mt-0.5 ml-2">
+                            {entry ? timeAgo(entry.date) : ""}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              </Card>
+
+              <Card className="mt-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="size-4 text-indigo-400" />
+                  <div className="text-white font-medium">Contribute</div>
+                </div>
+                <p className="text-sm text-gray-400">
+                  Want to suggest a note for the next release? Ping us in{" "}
+                  <span className="text-indigo-300">#pipvaro-feedback</span>{" "}
+                  within our discord server.
+                </p>
+              </Card>
+            </div>
           </div>
         </div>
       </main>

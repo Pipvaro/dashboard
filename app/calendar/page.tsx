@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "@heroicons/react/24/outline";
+import SiteBanner from "@/components/SiteBanner";
 
 /* ----------------------------- Types & helpers ---------------------------- */
 
@@ -278,266 +279,259 @@ export default function CalendarPage() {
         />
         <MobileNav />
       </div>
-
-      <div className="bg-[#3f4bf2] w-full py-2 px-4 text-white md:ml-72">
-        <p className="text-sm">
-          🚀 Welcome to Pipvaro! Your trading automation starts here.{" "}
-          <strong>
-            Since we are currently in beta phase some features may not be
-            available.
-          </strong>
-        </p>
-      </div>
-      <main className="md:ml-72 px-4 md:px-6 py-6 space-y-4">
-        {/* Header bar – FTMO-like */}
-        <div>
-          <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
-            <CalendarIcon className="size-5 text-indigo-400" />
-            Economic Calendar
-          </h1>
-          <p className="text-sm text-gray-400">
-            Stay updated with the latest economic events and their impact on the
-            markets.
-          </p>
-        </div>
-        <Card className="p-0 overflow-hidden hover:bg-gray-800/50">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between px-4 py-3 border-b border-gray-800">
-            <div className="flex items-center gap-3">
-              <button
-                className="rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700/30"
-                onClick={() => {
-                  const todayEl = document.getElementById("today-anchor");
-                  todayEl?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  });
-                }}
-              >
-                Today
-              </button>
-              <div className="text-white font-medium">
-                {fmtRange(weekStart, weekEnd)}
-              </div>
-            </div>
-
-            <div className="flex items-center">
-              <div className="hidden md:flex items-center gap-2 text-gray-300 text-sm px-2 py-1.5 rounded-md border border-gray-800">
-                <MapPin className="size-4 text-indigo-300" />
-                {tz}
-              </div>
-            </div>
+      <main className="md:ml-72">
+        <SiteBanner />
+        <div className="px-4 md:px-6 py-6 space-y-4">
+          {/* Header bar – FTMO-like */}
+          <div>
+            <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
+              <CalendarIcon className="size-5 text-indigo-400" />
+              Economic Calendar
+            </h1>
+            <p className="text-sm text-gray-400">
+              Stay updated with the latest economic events and their impact on
+              the markets.
+            </p>
           </div>
-
-          {/* Day "tabs" */}
-          <div className="flex flex-wrap gap-2 px-4 py-3 border-b border-gray-800">
-            {days.map((d) => {
-              const isToday = sameDay(d, new Date());
-              return (
-                <a
-                  key={d.toISOString()}
-                  href={`#d-${d.toDateString()}`}
-                  className={cn(
-                    "min-w-[84px] text-center rounded-md px-3 py-1.5 text-sm border",
-                    isToday
-                      ? "bg-indigo-500/15 border-indigo-500 text-indigo-300"
-                      : "bg-[#0f1419] border-gray-800 text-gray-300 hover:border-gray-700"
-                  )}
+          <Card className="p-0 overflow-hidden hover:bg-gray-800/50">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between px-4 py-3 border-b border-gray-800">
+              <div className="flex items-center gap-3">
+                <button
+                  className="rounded-md border border-gray-700 px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700/30"
+                  onClick={() => {
+                    const todayEl = document.getElementById("today-anchor");
+                    todayEl?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }}
                 >
-                  {fmtDayShort(d)}
-                </a>
-              );
-            })}
-          </div>
+                  Today
+                </button>
+                <div className="text-white font-medium">
+                  {fmtRange(weekStart, weekEnd)}
+                </div>
+              </div>
 
-          {/* Filters row */}
-          <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Impact */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs text-gray-400">Impact</span>
-              <CheckChip
-                active={fHigh}
-                onChange={() => setFHigh((v) => !v)}
-                color="rose"
-                icon={<AlertTriangle className="size-4" />}
-                label="High"
-              />
-              <CheckChip
-                active={fMed}
-                onChange={() => setFMed((v) => !v)}
-                color="amber"
-                icon={<CircleDot className="size-4" />}
-                label="Medium"
-              />
-              <CheckChip
-                active={fLow}
-                onChange={() => setFLow((v) => !v)}
-                color="sky"
-                icon={<Dot className="size-5" />}
-                label="Low"
-              />
-            </div>
-
-            {/* Visibility */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs text-gray-400">Visibility</span>
-              <ToggleChip
-                active={hidePast}
-                onClick={() => setHidePast((v) => !v)}
-                label="Hide past news"
-              />
-            </div>
-
-            {/* Instrument */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs text-gray-400">Instrument</span>
-              <div className="relative">
-                <select
-                  value={instrument}
-                  onChange={(e) => setInstrument(e.target.value)}
-                  className="appearance-none bg-[#0f1419] border border-gray-800 text-gray-200 text-sm rounded-md pl-3 pr-7 py-1.5 outline-none hover:border-gray-700"
-                >
-                  {instruments.map((it) => (
-                    <option key={it} value={it}>
-                      {it}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
+              <div className="flex items-center">
+                <div className="hidden md:flex items-center gap-2 text-gray-300 text-sm px-2 py-1.5 rounded-md border border-gray-800">
+                  <MapPin className="size-4 text-indigo-300" />
+                  {tz}
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
 
-        {/* Loading / Error */}
-        {loading && (
-          <Card>
-            <div className="py-8 text-center text-gray-400">
-              Loading calendar…
-            </div>
-          </Card>
-        )}
-        {err && !loading && (
-          <Card>
-            <div className="py-8 text-center text-rose-300">{err}</div>
-          </Card>
-        )}
-
-        {/* Day sections (untereinander) */}
-        {!loading &&
-          !err &&
-          days.map((d) => {
-            const key = new Date(
-              d.getFullYear(),
-              d.getMonth(),
-              d.getDate()
-            ).toDateString();
-            const list = byDay[key] || [];
-            const isToday = sameDay(d, new Date());
-            return (
-              <section key={key} id={isToday ? "today-anchor" : `d-${key}`}>
-                {/* Day header */}
-                <div className="mt-2 mb-2 px-2">
-                  <div
+            {/* Day "tabs" */}
+            <div className="flex flex-wrap gap-2 px-4 py-3 border-b border-gray-800">
+              {days.map((d) => {
+                const isToday = sameDay(d, new Date());
+                return (
+                  <a
+                    key={d.toISOString()}
+                    href={`#d-${d.toDateString()}`}
                     className={cn(
-                      "inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium border",
+                      "min-w-[84px] text-center rounded-md px-3 py-1.5 text-sm border",
                       isToday
                         ? "bg-indigo-500/15 border-indigo-500 text-indigo-300"
-                        : "bg-[#0f1419] border-gray-800 text-gray-200"
+                        : "bg-[#0f1419] border-gray-800 text-gray-300 hover:border-gray-700"
                     )}
                   >
-                    {d.toLocaleDateString(undefined, {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "short",
-                    })}
-                    {isToday && (
-                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                        Today
-                      </span>
-                    )}
-                  </div>
+                    {fmtDayShort(d)}
+                  </a>
+                );
+              })}
+            </div>
+
+            {/* Filters row */}
+            <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Impact */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs text-gray-400">Impact</span>
+                <CheckChip
+                  active={fHigh}
+                  onChange={() => setFHigh((v) => !v)}
+                  color="rose"
+                  icon={<AlertTriangle className="size-4" />}
+                  label="High"
+                />
+                <CheckChip
+                  active={fMed}
+                  onChange={() => setFMed((v) => !v)}
+                  color="amber"
+                  icon={<CircleDot className="size-4" />}
+                  label="Medium"
+                />
+                <CheckChip
+                  active={fLow}
+                  onChange={() => setFLow((v) => !v)}
+                  color="sky"
+                  icon={<Dot className="size-5" />}
+                  label="Low"
+                />
+              </div>
+
+              {/* Visibility */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs text-gray-400">Visibility</span>
+                <ToggleChip
+                  active={hidePast}
+                  onClick={() => setHidePast((v) => !v)}
+                  label="Hide past news"
+                />
+              </div>
+
+              {/* Instrument */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs text-gray-400">Instrument</span>
+                <div className="relative">
+                  <select
+                    value={instrument}
+                    onChange={(e) => setInstrument(e.target.value)}
+                    className="appearance-none bg-[#0f1419] border border-gray-800 text-gray-200 text-sm rounded-md pl-3 pr-7 py-1.5 outline-none hover:border-gray-700"
+                  >
+                    {instruments.map((it) => (
+                      <option key={it} value={it}>
+                        {it}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-4 text-gray-500" />
                 </div>
+              </div>
+            </div>
+          </Card>
 
-                {/* Table like FTMO */}
-                {/* NOTE: hover explicitly disabled ONLY here */}
-                <Card className="p-0 overflow-hidden hover:shadow-none hover:bg-gray-800/50 hover:ring-0 transition-none">
-                  {/* header row */}
-                  <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 text-xs text-gray-400 border-b border-gray-800">
-                    <div className="col-span-6">Description</div>
-                    <div className="col-span-2">Instrument</div>
-                    <div className="col-span-2">Date</div>
-                    <div className="col-span-1 text-right">Forecast</div>
-                    <div className="col-span-1 text-right">Previous</div>
+          {/* Loading / Error */}
+          {loading && (
+            <Card>
+              <div className="py-8 text-center text-gray-400">
+                Loading calendar…
+              </div>
+            </Card>
+          )}
+          {err && !loading && (
+            <Card>
+              <div className="py-8 text-center text-rose-300">{err}</div>
+            </Card>
+          )}
+
+          {/* Day sections (untereinander) */}
+          {!loading &&
+            !err &&
+            days.map((d) => {
+              const key = new Date(
+                d.getFullYear(),
+                d.getMonth(),
+                d.getDate()
+              ).toDateString();
+              const list = byDay[key] || [];
+              const isToday = sameDay(d, new Date());
+              return (
+                <section key={key} id={isToday ? "today-anchor" : `d-${key}`}>
+                  {/* Day header */}
+                  <div className="mt-2 mb-2 px-2">
+                    <div
+                      className={cn(
+                        "inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium border",
+                        isToday
+                          ? "bg-indigo-500/15 border-indigo-500 text-indigo-300"
+                          : "bg-[#0f1419] border-gray-800 text-gray-200"
+                      )}
+                    >
+                      {d.toLocaleDateString(undefined, {
+                        weekday: "long",
+                        day: "2-digit",
+                        month: "short",
+                      })}
+                      {isToday && (
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          Today
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {!list.length ? (
-                    <div className="px-4 py-6 text-sm text-gray-500">
-                      No events
+                  {/* Table like FTMO */}
+                  {/* NOTE: hover explicitly disabled ONLY here */}
+                  <Card className="p-0 overflow-hidden hover:shadow-none hover:bg-gray-800/50 hover:ring-0 transition-none">
+                    {/* header row */}
+                    <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 text-xs text-gray-400 border-b border-gray-800">
+                      <div className="col-span-6">Description</div>
+                      <div className="col-span-2">Instrument</div>
+                      <div className="col-span-2">Date</div>
+                      <div className="col-span-1 text-right">Forecast</div>
+                      <div className="col-span-1 text-right">Previous</div>
                     </div>
-                  ) : (
-                    <ul>
-                      {list.map((e) => (
-                        <li
-                          key={e.id}
-                          className={cn(
-                            "grid grid-cols-1 md:grid-cols-12 gap-2 px-4 py-3 border-b border-gray-900/60",
-                            e.impact === "High" && "bg-rose-500/5"
-                          )}
-                        >
-                          {/* description + impact pill */}
-                          <div className="col-span-6 flex items-start gap-2">
-                            <span
-                              className={cn(
-                                "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px]",
-                                impactPill(e.impact)
-                              )}
-                            >
-                              {impactIcon(e.impact)}
-                              {e.impact}
-                            </span>
-                            <div className="text-gray-100 leading-tight">
-                              {e.title}
+
+                    {!list.length ? (
+                      <div className="px-4 py-6 text-sm text-gray-500">
+                        No events
+                      </div>
+                    ) : (
+                      <ul>
+                        {list.map((e) => (
+                          <li
+                            key={e.id}
+                            className={cn(
+                              "grid grid-cols-1 md:grid-cols-12 gap-2 px-4 py-3 border-b border-gray-900/60",
+                              e.impact === "High" && "bg-rose-500/5"
+                            )}
+                          >
+                            {/* description + impact pill */}
+                            <div className="col-span-6 flex items-start gap-2">
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px]",
+                                  impactPill(e.impact)
+                                )}
+                              >
+                                {impactIcon(e.impact)}
+                                {e.impact}
+                              </span>
+                              <div className="text-gray-100 leading-tight">
+                                {e.title}
+                              </div>
                             </div>
-                          </div>
 
-                          {/* instrument */}
-                          <div className="col-span-2 text-gray-300">
-                            {e.instrument ?? "—"}
-                          </div>
-
-                          {/* time */}
-                          <div className="col-span-2 text-gray-300 inline-flex items-center gap-1">
-                            <Clock3 className="size-4 text-gray-400" />
-                            {fmtTime(e.dt)}
-                          </div>
-
-                          {/* forecast / previous (right aligned like FTMO) */}
-                          <div className="col-span-1 md:text-right text-gray-200">
-                            {e.forecast ?? "—"}
-                          </div>
-                          <div className="col-span-1 md:text-right text-gray-400">
-                            {e.previous ?? "—"}
-                          </div>
-
-                          {/* mobile extra row: actual (falls vorhanden) */}
-                          {e.actual && (
-                            <div className="md:hidden col-span-12 text-[12px] text-emerald-300 pt-1">
-                              Actual: {e.actual}
+                            {/* instrument */}
+                            <div className="col-span-2 text-gray-300">
+                              {e.instrument ?? "—"}
                             </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </Card>
-              </section>
-            );
-          })}
 
-        <p className="text-[11px] text-gray-500">
-          Source: ForexFactory & TradingEconomics (weekly feed). Times shown in{" "}
-          {tz}.
-        </p>
+                            {/* time */}
+                            <div className="col-span-2 text-gray-300 inline-flex items-center gap-1">
+                              <Clock3 className="size-4 text-gray-400" />
+                              {fmtTime(e.dt)}
+                            </div>
+
+                            {/* forecast / previous (right aligned like FTMO) */}
+                            <div className="col-span-1 md:text-right text-gray-200">
+                              {e.forecast ?? "—"}
+                            </div>
+                            <div className="col-span-1 md:text-right text-gray-400">
+                              {e.previous ?? "—"}
+                            </div>
+
+                            {/* mobile extra row: actual (falls vorhanden) */}
+                            {e.actual && (
+                              <div className="md:hidden col-span-12 text-[12px] text-emerald-300 pt-1">
+                                Actual: {e.actual}
+                              </div>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </Card>
+                </section>
+              );
+            })}
+
+          <p className="text-[11px] text-gray-500">
+            Source: ForexFactory & TradingEconomics (weekly feed). Times shown
+            in {tz}.
+          </p>
+        </div>
       </main>
     </div>
   );
