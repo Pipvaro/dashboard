@@ -333,7 +333,7 @@ export default function NewsPage() {
           </Card>
 
           {/* STATUS BANNER */}
-          {status !== "ok" && (
+          {/* {status !== "ok" && (
             <Link
               href="https://status.pipvaro.com"
               target="_blank"
@@ -373,7 +373,7 @@ export default function NewsPage() {
                 </div>
               </Card>
             </Link>
-          )}
+          )} */}
 
           {/* Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
