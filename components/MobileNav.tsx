@@ -13,7 +13,7 @@ import {
   Menu as MenuIcon,
   X,
 } from "lucide-react";
-import { CalendarIcon, PaperClipIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { BanknotesIcon, CalendarIcon, InboxIcon, PaperClipIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { ArrowLeftOnRectangleIcon } from "@heroicons/react/20/solid";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -305,13 +305,13 @@ export default function MobileNav() {
                   />
                   <Item
                     active={pathname === "/rcvs"}
-                    icon={Server}
+                    icon={InboxIcon}
                     label="Receivers"
                     onClick={() => router.push("/rcvs")}
                   />
                   <Item
                     active={pathname === "/accs"}
-                    icon={Server}
+                    icon={BanknotesIcon}
                     label="Accounts"
                     onClick={() => router.push("/accs")}
                   />

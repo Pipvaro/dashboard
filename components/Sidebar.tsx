@@ -3,7 +3,7 @@
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
 import { ArrowLeftOnRectangleIcon } from "@heroicons/react/20/solid";
-import { PaperClipIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { BanknotesIcon, InboxIcon, PaperClipIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { CalendarIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import {
   Contact,
@@ -249,14 +249,14 @@ export default function Sidebar() {
               <NavItem
                 active={pathname === "/rcvs"}
                 onClick={() => router.push("/rcvs")}
-                icon={<Server className="size-4 mr-3" />}
+                icon={<InboxIcon className="size-4 mr-3" />}
               >
                 Receivers
               </NavItem>
               <NavItem
                 active={pathname === "/accs"}
                 onClick={() => router.push("/accs")}
-                icon={<Server className="size-4 mr-3" />}
+                icon={<BanknotesIcon className="size-4 mr-3" />}
               >
                 Accounts
               </NavItem>
@@ -282,7 +282,10 @@ export default function Sidebar() {
                 ? "Plan (Free)"
                 : "Plan"}
             </span>
-            <Link href={"/billing"} className="text-xs text-gray-300 font-medium flex items-center gap-1 cursor-pointer hover:text-white">
+            <Link
+              href={"/billing"}
+              className="text-xs text-gray-300 font-medium flex items-center gap-1 cursor-pointer hover:text-white"
+            >
               <Cog6ToothIcon className="size-4 text-gray-300 animate-spin-slow" />
               Manage
             </Link>
