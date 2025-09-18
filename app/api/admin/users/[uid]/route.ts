@@ -1,27 +1,30 @@
-import { NextRequest } from "next/server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { masterFetch } from "@/lib/serverFetch";
 
-export async function GET(
-  _: NextRequest,
-  { params }: { params: { uid: string } }
-) {
-  const r = await masterFetch(`/admin/users/${params.uid}`);
-  return new Response(await r.text(), {
+export async function GET(_req: Request, context: any) {
+  const { uid } = context?.params ?? {};
+
+  const r = await masterFetch(`/admin/users/${uid}`);
+  const body = await r.text();
+
+  return new Response(body, {
     status: r.status,
     headers: { "Content-Type": "application/json" },
   });
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { uid: string } }
-) {
-  const body = await req.text();
-  const r = await masterFetch(`/admin/users/${params.uid}`, {
+export async function PATCH(req: Request, context: any) {
+  const { uid } = context?.params ?? {};
+  const payload = await req.text(); // Body unverändert weiterreichen
+
+  const r = await masterFetch(`/admin/users/${uid}`, {
     method: "PATCH",
-    body,
+    headers: { "Content-Type": "application/json" },
+    body: payload,
   });
-  return new Response(await r.text(), {
+  const body = await r.text();
+
+  return new Response(body, {
     status: r.status,
     headers: { "Content-Type": "application/json" },
   });

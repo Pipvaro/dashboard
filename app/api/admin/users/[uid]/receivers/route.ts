@@ -1,12 +1,13 @@
-import { NextRequest } from "next/server";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { masterFetch } from "@/lib/serverFetch";
 
-export async function GET(
-  _: NextRequest,
-  { params }: { params: { uid: string } }
-) {
-  const r = await masterFetch(`/admin/users/${params.uid}/receivers`);
-  return new Response(await r.text(), {
+export async function GET(_req: Request, context: any) {
+  const { uid } = context?.params ?? {};
+
+  const r = await masterFetch(`/admin/users/${uid}/receivers`);
+  const body = await r.text();
+
+  return new Response(body, {
     status: r.status,
     headers: { "Content-Type": "application/json" },
   });
