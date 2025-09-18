@@ -109,6 +109,18 @@ async function startCheckout(plan: "lunar" | "nova") {
   else alert(d?.message || "Checkout failed");
 }
 
+async function openPortalOrCheckout(fallbackPlan: "lunar" | "nova") {
+  const r = await fetch("/api/stripe/portal", { method: "POST" });
+  const d = await r.json();
+  if (d?.ok && d?.url) {
+    window.location.href = d.url;
+  } else if (d?.reason === "no_customer") {
+    // z.B. Free-User ohne Stripe-Kunde → erst Abo anlegen
+    await startCheckout(fallbackPlan);
+  } else {
+    alert(d?.message || "Could not open billing portal");
+  }
+}
 
 export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[] | null>(null);
@@ -227,17 +239,16 @@ function PlanCard({
 }) {
   const isPopular = !!plan.popular;
 
-async function goCheckout(plan: "lunar" | "nova") {
-  const r = await fetch("/api/stripe/checkout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ plan }),
-  });
-  const d = await r.json();
-  if (d?.ok && d?.url) window.location.href = d.url;
-  else alert(d?.message || "Checkout failed");
-}
-
+  async function goCheckout(plan: "lunar" | "nova") {
+    const r = await fetch("/api/stripe/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan }),
+    });
+    const d = await r.json();
+    if (d?.ok && d?.url) window.location.href = d.url;
+    else alert(d?.message || "Checkout failed");
+  }
 
   return (
     <div
@@ -311,7 +322,15 @@ async function goCheckout(plan: "lunar" | "nova") {
               : "bg-transparent text-white border border-gray-700 hover:bg-white/10"
         )}
         disabled={isCurrent}
-        onClick={goCheckout.bind(null, plan.slug === "nova" ? "nova" : "lunar")}
+        onClick={() => {
+          if (isCurrent) return;
+          if (ctaLabel === "Change Subscription") {
+            openPortalOrCheckout(plan.slug === "nova" ? "nova" : "lunar");
+          } else {
+            // "Upgrade"
+            goCheckout(plan.slug === "nova" ? "nova" : "lunar");
+          }
+        }}
       >
         {ctaLabel}
       </button>
