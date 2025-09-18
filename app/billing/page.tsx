@@ -178,9 +178,9 @@ export default function BillingPage() {
         <MobileNav />
       </div>
 
-      <SiteBanner />
-
-      <main className="md:ml-72 px-6 py-8">
+      <main className="md:ml-72">
+        <SiteBanner />
+        <div className="px-6 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
             <BanknotesIcon className="size-5 text-indigo-400" />
@@ -212,6 +212,8 @@ export default function BillingPage() {
               />
             );
           })}
+        </div>
+
         </div>
       </main>
     </div>

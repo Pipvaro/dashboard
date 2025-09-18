@@ -1,5 +1,16 @@
-// app/loading.tsx
-import { AppSkeleton } from "@/components/skeletons/AppSkeleton";
+import Image from "next/image";
+
 export default function Loading() {
-  return <AppSkeleton />;
+  return (
+    <div className="w-full h-screen flex items-center justify-center">
+      <div className="animate-pulse">
+        <Image
+          src="/assets/Transparent/logo-beta.svg"
+          alt="Loading..."
+          width={180}
+          height={180}
+        />
+      </div>
+    </div>
+  );
 }
