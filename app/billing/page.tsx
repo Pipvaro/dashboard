@@ -9,8 +9,7 @@ import SiteBanner from "@/components/SiteBanner";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-
-/* ----------------------------- Types & helpers ---------------------------- */
+import { useRouter } from "next/navigation";
 
 type Plan = {
   _id: string;
@@ -29,7 +28,6 @@ type Plan = {
 function fmtPrice(n: number, currency = "$") {
   return `${currency}${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
-
 function slugify(x?: string | null) {
   return String(x || "")
     .trim()
@@ -38,8 +36,7 @@ function slugify(x?: string | null) {
     .replace(/[^a-z0-9\-]/g, "");
 }
 
-/* ------------------------------ Fallback data ----------------------------- */
-
+/* fallback */
 const FALLBACK_PLANS: Plan[] = [
   {
     _id: "plan-fusion",
@@ -101,28 +98,32 @@ const FALLBACK_PLANS: Plan[] = [
   },
 ];
 
-/* --------------------------------- Page ---------------------------------- */
-
 export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  // aktueller Plan aus deinem System (z. B. "fusion" | "lunar" | "nova")
   const { user } = useCurrentUser() as {
     user: { subscription?: string } | null;
     loading: boolean;
   };
   const currentKey = useMemo(() => slugify(user?.subscription || ""), [user]);
 
-  // feste Tiers: fusion < lunar < nova
   const tierOf = (key: string) => {
     if (key.includes("fusion")) return 1;
     if (key.includes("lunar")) return 2;
     if (key.includes("nova")) return 3;
     return 0;
   };
-
   const currentTier = useMemo(() => tierOf(currentKey), [currentKey]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("success")) {
+      // Give webhook a moment, then refetch your /me endpoint
+      setTimeout(() => router.refresh?.(), 1500);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,7 +156,6 @@ export default function BillingPage() {
   return (
     <div className="min-h-screen bg-[#0b0f14]">
       <Sidebar />
-
       <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
         <Image
           src={"/assets/Transparent/logo-dash.png"}
@@ -183,18 +183,11 @@ export default function BillingPage() {
             const slugKey = slugify(p.slug || p.title);
             const isCurrent = slugKey === currentKey;
             const planTier = tierOf(slugKey);
-
-            // CTA-Logik:
-            // - Gleich -> "Current plan"
-            // - Höher als aktuell -> "Upgrade"
-            // - Niedriger als aktuell -> "Change Subscription"
-            // - Falls kein aktueller Plan erkannt -> Standard "Upgrade"
             let ctaLabel = "Upgrade";
             if (isCurrent) ctaLabel = "Current plan";
-            else if (currentTier > 0) {
+            else if (currentTier > 0)
               ctaLabel =
                 planTier > currentTier ? "Upgrade" : "Change Subscription";
-            }
 
             return (
               <PlanCard
@@ -211,8 +204,6 @@ export default function BillingPage() {
   );
 }
 
-/* ------------------------------- Components ------------------------------ */
-
 function PlanCard({
   plan,
   isCurrent,
@@ -223,6 +214,18 @@ function PlanCard({
   ctaLabel: string;
 }) {
   const isPopular = !!plan.popular;
+
+  async function goCheckout() {
+    if (isCurrent) return;
+    const planKey = (plan.slug || "").toLowerCase();
+    const r = await fetch("/api/stripe/checkout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ plan: planKey }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (d?.url) window.location.href = d.url;
+  }
 
   return (
     <div
@@ -262,7 +265,6 @@ function PlanCard({
 
       <div className="mt-6">
         <div className="text-xl font-semibold">{plan.title}</div>
-
         {plan.subtitle ? (
           <div
             className={cn(
@@ -273,7 +275,6 @@ function PlanCard({
             {plan.subtitle}
           </div>
         ) : null}
-
         {plan.badge ? (
           <div
             className={cn(
@@ -298,10 +299,7 @@ function PlanCard({
               : "bg-transparent text-white border border-gray-700 hover:bg-white/10"
         )}
         disabled={isCurrent}
-        onClick={() => {
-          if (isCurrent) return;
-          // TODO: hook up to your change/upgrade flow
-        }}
+        onClick={goCheckout}
       >
         {ctaLabel}
       </button>
