@@ -25,11 +25,11 @@ export default async function ReceiversPage() {
 
   return (
     <div className="min-h-screen bg-[#0b0f1a] text-[#d3d5f0]">
-      <SiteBanner />
       <div className="flex">
         <Sidebar />
         <main className="flex-1 md:ml-72">
           <MobileNav />
+          <SiteBanner />
           <div className="mx-auto w-full max-w-screen-2xl px-4 md:px-8 py-8">
             <div className="mb-6">
               <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
