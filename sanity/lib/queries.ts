@@ -43,3 +43,17 @@ export const SITE_SETTINGS_QUERY = groq`*[_type == "siteSettings"][0]{
   bannerLinkText,
   bannerLinkUrl
 }`;
+
+export const PLANS_QUERY = groq`*[_type == "plan"] | order(coalesce(order, 999) asc) {
+  _id,
+  title,
+  "slug": slug.current,
+  priceMonthly,
+  currency,
+  priceSuffix,
+  badge,
+  subtitle,
+  popular,
+  order,
+  features
+}`;
