@@ -98,6 +98,18 @@ const FALLBACK_PLANS: Plan[] = [
   },
 ];
 
+async function startCheckout(plan: "lunar" | "nova") {
+  const r = await fetch("/api/stripe/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan }),
+  });
+  const d = await r.json();
+  if (d?.ok && d?.url) window.location.href = d.url;
+  else alert(d?.message || "Checkout failed");
+}
+
+
 export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -215,17 +227,17 @@ function PlanCard({
 }) {
   const isPopular = !!plan.popular;
 
-  async function goCheckout() {
-    if (isCurrent) return;
-    const planKey = (plan.slug || "").toLowerCase();
-    const r = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ plan: planKey }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (d?.url) window.location.href = d.url;
-  }
+async function goCheckout(plan: "lunar" | "nova") {
+  const r = await fetch("/api/stripe/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan }),
+  });
+  const d = await r.json();
+  if (d?.ok && d?.url) window.location.href = d.url;
+  else alert(d?.message || "Checkout failed");
+}
+
 
   return (
     <div
@@ -299,7 +311,7 @@ function PlanCard({
               : "bg-transparent text-white border border-gray-700 hover:bg-white/10"
         )}
         disabled={isCurrent}
-        onClick={goCheckout}
+        onClick={goCheckout.bind(null, plan.slug === "nova" ? "nova" : "lunar")}
       >
         {ctaLabel}
       </button>
