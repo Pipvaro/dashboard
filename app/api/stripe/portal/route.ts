@@ -20,28 +20,26 @@ async function getCurrentUser(req: Request) {
 export async function POST(req: Request) {
   try {
     const me = await getCurrentUser(req);
-    if (!me?.user_id)
+    if (!me?.stripe_customer_id) {
       return NextResponse.json(
-        { ok: false, message: "unauthorized" },
-        { status: 401 }
-      );
-    if (!me?.stripe_customer_id)
-      return NextResponse.json(
-        { ok: false, reason: "no_customer" },
+        { ok: false, message: "no_customer" },
         { status: 400 }
       );
+    }
 
     const cfg = process.env.STRIPE_PORTAL_CONFIGURATION_ID; // optional
     const session = await stripe.billingPortal.sessions.create({
-      customer: me.stripe_customer_id,
+      customer: me.stripe_customer_id, // NUR das!
       return_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
       ...(cfg ? { configuration: cfg } : {}),
     });
 
     return NextResponse.json({ ok: true, url: session.url });
   } catch (e: any) {
-    const msg = e?.raw?.message || e?.message || "server_error";
-    console.error("portal create failed:", msg);
-    return NextResponse.json({ ok: false, message: msg }, { status: 500 });
+    console.error("portal create failed:", e?.message || e);
+    return NextResponse.json(
+      { ok: false, message: e?.raw?.message || "server_error" },
+      { status: 500 }
+    );
   }
 }

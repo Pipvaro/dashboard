@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 export const runtime = "nodejs";
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 async function getCurrentUser(req: Request) {
@@ -36,21 +35,20 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await req.json().catch(() => ({}) as any);
+    const body = await req.json().catch(() => ({}));
     const priceId = body?.priceId ?? planToPriceId(body?.plan);
-
-    if (!priceId || !String(priceId).startsWith("price_")) {
+    if (!priceId) {
       return NextResponse.json(
         { ok: false, message: "missing_or_invalid_price" },
         { status: 400 }
       );
     }
 
-    // optional: vorhandenen Stripe-Customer wiederverwenden (falls /api/me ihn liefert)
-    const customer =
-      me.stripe_customer_id && String(me.stripe_customer_id).startsWith("cus_")
-        ? me.stripe_customer_id
-        : undefined;
+    // ENTWEDER bekannten Customer verwenden ...
+    const customerParams = me.stripe_customer_id
+      ? { customer: me.stripe_customer_id }
+      : // ... ODER neuen anlegen über E-Mail (aber dann KEIN `customer` setzen!)
+        { customer_creation: "always" as const, customer_email: me.email };
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -58,25 +56,20 @@ export async function POST(req: Request) {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?success=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=1`,
 
-      // 🔑 Zuordnung im Webhook
       client_reference_id: me.user_id,
       metadata: { userId: me.user_id },
-      subscription_data: {
-        metadata: { userId: me.user_id },
-      },
-
-      // Für Subscriptions KEIN customer_creation!
-      customer,
-      customer_email: me.email,
+      subscription_data: { metadata: { userId: me.user_id } },
 
       allow_promotion_codes: true,
+      ...customerParams, // << genau EINES der beiden Sets
     });
 
     return NextResponse.json({ ok: true, url: session.url, id: session.id });
   } catch (e: any) {
-    // Stripe-Fehler sauber ausgeben
-    const msg = e?.raw?.message || e?.message || "server_error";
-    console.error("checkout create failed:", msg, e?.raw || e);
-    return NextResponse.json({ ok: false, message: msg }, { status: 500 });
+    console.error("checkout create failed:", e?.message || e);
+    return NextResponse.json(
+      { ok: false, message: e?.raw?.message || "server_error" },
+      { status: 500 }
+    );
   }
 }
