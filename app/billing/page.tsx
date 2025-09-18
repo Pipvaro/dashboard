@@ -1,13 +1,14 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Sidebar from "@/components/Sidebar";
 import MobileNav from "@/components/MobileNav";
 import SiteBanner from "@/components/SiteBanner";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 /* ----------------------------- Types & helpers ---------------------------- */
 
@@ -15,19 +16,26 @@ type Plan = {
   _id: string;
   title: string;
   slug?: string | null;
-  priceMonthly: number; // e.g. 69
-  currency?: string; // e.g. "$"
-  priceSuffix?: string; // e.g. "/ month"
-  badge?: string | null; // e.g. "Free · XAUUSD only"
-  subtitle?: string | null; // e.g. "Beta · Hosting included"
+  priceMonthly: number;
+  currency?: string;
+  priceSuffix?: string;
+  badge?: string | null;
+  subtitle?: string | null;
   popular?: boolean;
   order?: number | null;
   features: string[];
 };
 
 function fmtPrice(n: number, currency = "$") {
-  // Prices are integers in the designs; keep it clean
   return `${currency}${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
+function slugify(x?: string | null) {
+  return String(x || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\-]/g, "");
 }
 
 /* ------------------------------ Fallback data ----------------------------- */
@@ -99,6 +107,23 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // aktueller Plan aus deinem System (z. B. "fusion" | "lunar" | "nova")
+  const { user } = useCurrentUser() as {
+    user: { subscription?: string } | null;
+    loading: boolean;
+  };
+  const currentKey = useMemo(() => slugify(user?.subscription || ""), [user]);
+
+  // feste Tiers: fusion < lunar < nova
+  const tierOf = (key: string) => {
+    if (key.includes("fusion")) return 1;
+    if (key.includes("lunar")) return 2;
+    if (key.includes("nova")) return 3;
+    return 0;
+  };
+
+  const currentTier = useMemo(() => tierOf(currentKey), [currentKey]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -107,9 +132,7 @@ export default function BillingPage() {
         const r = await fetch("/api/plans", { cache: "no-store" });
         const d = await r.json();
         const items = Array.isArray(d?.items) ? (d.items as Plan[]) : [];
-        if (!cancelled) {
-          setPlans(items.length ? items : FALLBACK_PLANS);
-        }
+        if (!cancelled) setPlans(items.length ? items : FALLBACK_PLANS);
       } catch {
         if (!cancelled) setPlans(FALLBACK_PLANS);
       } finally {
@@ -131,10 +154,8 @@ export default function BillingPage() {
 
   return (
     <div className="min-h-screen bg-[#0b0f14]">
-      {/* Desktop sidebar */}
       <Sidebar />
 
-      {/* Mobile header */}
       <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
         <Image
           src={"/assets/Transparent/logo-dash.png"}
@@ -146,12 +167,9 @@ export default function BillingPage() {
         <MobileNav />
       </div>
 
-      {/* Global banner (Sanity-controlled) */}
+      <SiteBanner />
 
-      <main className="md:ml-72">
-        <SiteBanner />
-        <div className="px-6 py-8">
-        {/* Header */}
+      <main className="md:ml-72 px-6 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-white">Plans & Billing</h1>
           <p className="text-sm text-gray-400">
@@ -160,13 +178,33 @@ export default function BillingPage() {
           </p>
         </div>
 
-        {/* Pricing grid */}
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-3">
-          {(loading ? FALLBACK_PLANS : ordered).map((p) => (
-            <PlanCard key={p._id} plan={p} />
-          ))}
-        </div>
+          {(loading ? FALLBACK_PLANS : ordered).map((p) => {
+            const slugKey = slugify(p.slug || p.title);
+            const isCurrent = slugKey === currentKey;
+            const planTier = tierOf(slugKey);
 
+            // CTA-Logik:
+            // - Gleich -> "Current plan"
+            // - Höher als aktuell -> "Upgrade"
+            // - Niedriger als aktuell -> "Change Subscription"
+            // - Falls kein aktueller Plan erkannt -> Standard "Upgrade"
+            let ctaLabel = "Upgrade";
+            if (isCurrent) ctaLabel = "Current plan";
+            else if (currentTier > 0) {
+              ctaLabel =
+                planTier > currentTier ? "Upgrade" : "Change Subscription";
+            }
+
+            return (
+              <PlanCard
+                key={p._id}
+                plan={p}
+                isCurrent={isCurrent}
+                ctaLabel={ctaLabel}
+              />
+            );
+          })}
         </div>
       </main>
     </div>
@@ -175,7 +213,15 @@ export default function BillingPage() {
 
 /* ------------------------------- Components ------------------------------ */
 
-function PlanCard({ plan }: { plan: Plan }) {
+function PlanCard({
+  plan,
+  isCurrent,
+  ctaLabel,
+}: {
+  plan: Plan;
+  isCurrent: boolean;
+  ctaLabel: string;
+}) {
   const isPopular = !!plan.popular;
 
   return (
@@ -187,7 +233,21 @@ function PlanCard({ plan }: { plan: Plan }) {
           : "bg-[#14181f] border-gray-800 text-white/95"
       )}
     >
-      {/* Price */}
+      {isCurrent && (
+        <div className="absolute -top-3 right-5">
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-1 text-xs font-medium border",
+              isPopular
+                ? "bg-white/15 text-white border-white/20"
+                : "bg-white/10 text-gray-200 border-white/15"
+            )}
+          >
+            Current plan
+          </span>
+        </div>
+      )}
+
       <div className="text-5xl font-semibold tracking-tight">
         {fmtPrice(plan.priceMonthly, plan.currency || "$")}{" "}
         <span
@@ -200,7 +260,6 @@ function PlanCard({ plan }: { plan: Plan }) {
         </span>
       </div>
 
-      {/* Title / subtitle / badge */}
       <div className="mt-6">
         <div className="text-xl font-semibold">{plan.title}</div>
 
@@ -227,23 +286,26 @@ function PlanCard({ plan }: { plan: Plan }) {
         ) : null}
       </div>
 
-      {/* CTA */}
       <button
         className={cn(
           "mt-6 w-full rounded-full py-3 text-sm font-semibold transition focus:outline-none",
-          isPopular
-            ? "bg-white text-[#1b1d2a] hover:bg-white/90"
-            : "bg-transparent text-white border border-gray-700 hover:bg-white/10"
+          isCurrent
+            ? isPopular
+              ? "bg-white/20 text-white cursor-default"
+              : "bg-transparent text-gray-400 border border-gray-700 cursor-default"
+            : isPopular
+              ? "bg-white text-[#1b1d2a] hover:bg-white/90"
+              : "bg-transparent text-white border border-gray-700 hover:bg-white/10"
         )}
-        // TODO: wire this to your checkout/upgrade flow
+        disabled={isCurrent}
         onClick={() => {
-          // placeholder
+          if (isCurrent) return;
+          // TODO: hook up to your change/upgrade flow
         }}
       >
-        Get started
+        {ctaLabel}
       </button>
 
-      {/* Feature list */}
       <ul
         className={cn(
           "mt-6 space-y-3",

@@ -282,10 +282,10 @@ export default function Sidebar() {
                 ? "Plan (Free)"
                 : "Plan"}
             </span>
-            <span className="text-xs text-gray-300 font-medium flex items-center gap-1 cursor-pointer hover:text-white">
+            <Link href={"/billing"} className="text-xs text-gray-300 font-medium flex items-center gap-1 cursor-pointer hover:text-white">
               <Cog6ToothIcon className="size-4 text-gray-300 animate-spin-slow" />
               Manage
-            </span>
+            </Link>
           </div>
         )}
 
