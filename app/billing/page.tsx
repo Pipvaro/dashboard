@@ -109,7 +109,6 @@ async function startCheckout(plan: "lunar" | "nova") {
   else alert(d?.message || "Checkout failed");
 }
 
-
 export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -132,7 +131,6 @@ export default function BillingPage() {
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("success")) {
-      // Give webhook a moment, then refetch your /me endpoint
       setTimeout(() => router.refresh?.(), 1500);
     }
   }, []);
@@ -227,17 +225,24 @@ function PlanCard({
 }) {
   const isPopular = !!plan.popular;
 
-async function goCheckout(plan: "lunar" | "nova") {
-  const r = await fetch("/api/stripe/checkout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ plan }),
-  });
-  const d = await r.json();
-  if (d?.ok && d?.url) window.location.href = d.url;
-  else alert(d?.message || "Checkout failed");
-}
+  // ✅ NEU: Portal-Opener (für "Change Subscription")
+  async function goPortal() {
+    const r = await fetch("/api/stripe/portal", { method: "POST" });
+    const d = await r.json();
+    if (d?.ok && d?.url) window.location.href = d.url;
+    else alert(d?.message || "Could not open portal");
+  }
 
+  async function goCheckout(plan: "lunar" | "nova") {
+    const r = await fetch("/api/stripe/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan }),
+    });
+    const d = await r.json();
+    if (d?.ok && d?.url) window.location.href = d.url;
+    else alert(d?.message || "Checkout failed");
+  }
 
   return (
     <div
@@ -311,7 +316,14 @@ async function goCheckout(plan: "lunar" | "nova") {
               : "bg-transparent text-white border border-gray-700 hover:bg-white/10"
         )}
         disabled={isCurrent}
-        onClick={goCheckout.bind(null, plan.slug === "nova" ? "nova" : "lunar")}
+        // 🔁 einziges Verhalten, das geändert wurde:
+        onClick={() => {
+          if (ctaLabel === "Change Subscription") {
+            goPortal();
+          } else {
+            goCheckout(plan.slug === "nova" ? "nova" : "lunar");
+          }
+        }}
       >
         {ctaLabel}
       </button>
