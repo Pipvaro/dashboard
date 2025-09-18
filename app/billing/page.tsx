@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRouter } from "next/navigation";
+import { BanknotesIcon } from "@heroicons/react/24/outline";
 
 type Plan = {
   _id: string;
@@ -181,7 +182,10 @@ export default function BillingPage() {
 
       <main className="md:ml-72 px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-white">Plans & Billing</h1>
+          <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
+            <BanknotesIcon className="size-5 text-indigo-400" />
+            Plans & Billing
+          </h1>
           <p className="text-sm text-gray-400">
             Choose the plan that fits your trading. Upgrade or downgrade
             anytime.

@@ -2,7 +2,6 @@
 // app/api/stripe/checkout/route.ts
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-
 export const runtime = "nodejs";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -13,13 +12,11 @@ async function getCurrentUser(req: Request) {
     cache: "no-store",
   });
   if (!r.ok) return null;
-  const d = await r.json().catch(() => null);
-  return d?.user ?? null;
+  return (await r.json())?.user ?? null;
 }
 
 function planToPriceId(plan?: string) {
-  if (!plan) return null;
-  const p = String(plan).toLowerCase();
+  const p = String(plan || "").toLowerCase();
   if (p === "nova") return process.env.STRIPE_PRICE_NOVA!;
   if (p === "lunar") return process.env.STRIPE_PRICE_LUNAR!;
   return null;
@@ -35,7 +32,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}) as any);
     const priceId = body?.priceId ?? planToPriceId(body?.plan);
     if (!priceId) {
       return NextResponse.json(
@@ -44,31 +41,30 @@ export async function POST(req: Request) {
       );
     }
 
-    // ENTWEDER bekannten Customer verwenden ...
-    const customerParams = me.stripe_customer_id
-      ? { customer: me.stripe_customer_id }
-      : // ... ODER neuen anlegen über E-Mail (aber dann KEIN `customer` setzen!)
-        { customer_creation: "always" as const, customer_email: me.email };
-
-    const session = await stripe.checkout.sessions.create({
+    const params: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?success=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=1`,
-
       client_reference_id: me.user_id,
       metadata: { userId: me.user_id },
       subscription_data: { metadata: { userId: me.user_id } },
-
       allow_promotion_codes: true,
-      ...customerParams, // << genau EINES der beiden Sets
-    });
+    };
 
+    if (me.stripe_customer_id) {
+      params.customer = me.stripe_customer_id; // ✅ exakt einer der beiden
+    } else {
+      params.customer_email = me.email; // ✅
+    }
+    // KEIN customer_creation hier!
+
+    const session = await stripe.checkout.sessions.create(params);
     return NextResponse.json({ ok: true, url: session.url, id: session.id });
   } catch (e: any) {
     console.error("checkout create failed:", e?.message || e);
     return NextResponse.json(
-      { ok: false, message: e?.raw?.message || "server_error" },
+      { ok: false, message: "server_error" },
       { status: 500 }
     );
   }
