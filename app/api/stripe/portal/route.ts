@@ -1,47 +1,38 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { stripe, getOriginFromHeaders } from "@/lib/stripe";
 import Stripe from "stripe";
+import { headers } from "next/headers";
 
-export const runtime = "nodejs";
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-async function getCurrentUser(req: Request) {
-  const meUrl = new URL("/api/me", req.url);
-  const r = await fetch(meUrl, {
-    headers: { cookie: req.headers.get("cookie") ?? "" },
-    cache: "no-store",
-  });
-  if (!r.ok) return null;
-  const d = await r.json().catch(() => null);
-  return d?.user ?? null; // { user_id, email, stripe_customer_id, ... }
-}
-
-export async function POST(req: Request) {
+// (If you store the customer id you can fetch it here. For demo, we derive it
+// from a session id that may be present on success redirect. Adjust as needed.)
+export async function POST(req: NextRequest) {
   try {
-    const me = await getCurrentUser(req);
-    if (!me?.user_id) {
+    const body = await req.json().catch(() => ({}));
+    const customerId: string | undefined = body.customerId;
+
+    if (!customerId) {
       return NextResponse.json(
-        { ok: false, message: "unauthorized" },
-        { status: 401 }
-      );
-    }
-    if (!me?.stripe_customer_id) {
-      // Kein Customer vorhanden -> Portal macht keinen Sinn
-      return NextResponse.json(
-        { ok: false, reason: "no_customer" },
+        { ok: false, message: "Missing customerId" },
         { status: 400 }
       );
     }
 
-    const session = await stripe.billingPortal.sessions.create({
-      customer: me.stripe_customer_id,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+    const h = headers();
+    const origin = getOriginFromHeaders(await h);
+    const portal = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${origin}/billing`,
     });
 
-    return NextResponse.json({ ok: true, url: session.url });
+    return NextResponse.json({ ok: true, url: portal.url });
   } catch (e: any) {
-    const msg = e?.raw?.message || e?.message || "server_error";
-    console.error("portal create failed:", msg, e?.raw || e);
-    return NextResponse.json({ ok: false, message: msg }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        message: e?.message || "Failed to create billing portal session",
+      },
+      { status: 500 }
+    );
   }
 }
