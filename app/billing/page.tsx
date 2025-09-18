@@ -170,7 +170,7 @@ export default function BillingPage() {
       <Sidebar />
       <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
         <Image
-          src={"/assets/Transparent/logo-dash.png"}
+          src={"/assets/Transparent/logo-beta.svg"}
           alt="logo"
           height={100}
           width={250}

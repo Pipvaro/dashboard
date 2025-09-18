@@ -148,7 +148,7 @@ export default function Sidebar() {
         {/* Header */}
         <div className="py-3 border-b px-4 border-gray-700/50 h-20 flex items-center justify-between shrink-0">
           <Image
-            src="/assets/Transparent/logo-dash.png"
+            src="/assets/Transparent/logo-beta.svg"
             alt="logo"
             width={128}
             height={32}

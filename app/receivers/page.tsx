@@ -86,7 +86,7 @@ export default async function Page({
         <SiteBanner />
         <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
           <Image
-            src={"/assets/Transparent/logo-dash.png"}
+            src={"/assets/Transparent/logo-beta.svg"}
             alt="logo"
             height={100}
             width={250}
@@ -136,7 +136,10 @@ export default async function Page({
 
           {receivers.length === 0 ? (
             <Card>
-              <p className="text-gray-500">No receivers found. Create one now to start automating your trading experience.</p>
+              <p className="text-gray-500">
+                No receivers found. Create one now to start automating your
+                trading experience.
+              </p>
             </Card>
           ) : (
             receivers.map((r) => {
@@ -272,8 +275,8 @@ export default async function Page({
                             {policy.after_sec != null
                               ? `/${policy.after_sec}s)`
                               : policy.before_sec != null
-                              ? ")"
-                              : ""}
+                                ? ")"
+                                : ""}
                           </Pill>
                         </Row>
                       </div>
