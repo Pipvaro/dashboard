@@ -3,7 +3,7 @@
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
 import { ArrowLeftOnRectangleIcon } from "@heroicons/react/20/solid";
-import { PaperClipIcon } from "@heroicons/react/24/outline";
+import { PaperClipIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import { CalendarIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import {
   Contact,
@@ -242,7 +242,7 @@ export default function Sidebar() {
               <NavItem
                 active={pathname === "/users"}
                 onClick={() => router.push("/users")}
-                icon={<Server className="size-4 mr-3" />}
+                icon={<UserGroupIcon className="size-4 mr-3" />}
               >
                 Users
               </NavItem>
