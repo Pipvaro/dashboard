@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { JSX, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/apiFetch";
 
 /* ==================== Types ==================== */
 type Summary = {
@@ -71,17 +72,22 @@ type Pve = {
 function useAutoJSON<T = any>(url: string, ms = 5000) {
   const [data, setData] = useState<T | null>(null);
   const t = useRef<any>(null);
+
   const load = async () => {
     try {
-      const r = await fetch(url, { cache: "no-store" });
+      const r = await apiFetch(url); // <-- use wrapper here
       setData(await r.json());
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   };
+
   useEffect(() => {
     load();
     t.current = setInterval(load, ms);
     return () => clearInterval(t.current);
   }, [url, ms]);
+
   return data;
 }
 
@@ -248,6 +254,20 @@ export default function CommandCenter() {
     const id = setInterval(() => setIdx((i) => (i + 1) % panes), 10000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const id = setInterval(
+      () => {
+        fetch("/api/auth/refresh", {
+          method: "POST",
+          credentials: "include",
+        }).catch(() => {});
+      },
+      5 * 60 * 1000
+    );
+    return () => clearInterval(id);
+  }, []);
+
 
   // Allow keyboard left/right on the kiosk machine (optional)
   useEffect(() => {

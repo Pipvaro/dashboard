@@ -13,6 +13,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/apiFetch";
 
 type Props = {
   aid: string;
@@ -32,15 +33,14 @@ type HistRow = {
   };
 };
 
-function useAutoJSON<T = any>(url: string, intervalMs = 5000) {
+function useAutoJSON<T = any>(url: string, ms = 5000) {
   const [data, setData] = useState<T | null>(null);
-  const timer = useRef<any>(null);
+  const t = useRef<any>(null);
 
   const load = async () => {
     try {
-      const r = await fetch(url, { cache: "no-store" });
-      const d = await r.json();
-      setData(d);
+      const r = await apiFetch(url); // <-- use wrapper here
+      setData(await r.json());
     } catch {
       /* ignore */
     }
@@ -48,9 +48,9 @@ function useAutoJSON<T = any>(url: string, intervalMs = 5000) {
 
   useEffect(() => {
     load();
-    timer.current = setInterval(load, intervalMs);
-    return () => clearInterval(timer.current);
-  }, [url, intervalMs]);
+    t.current = setInterval(load, ms);
+    return () => clearInterval(t.current);
+  }, [url, ms]);
 
   return data;
 }

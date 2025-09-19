@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     }
   );
 
-  const data = await apiRes.json();
+  const data = await apiRes.json().catch(() => ({}));
 
   if (!apiRes.ok || !data?.access_token) {
     return NextResponse.json(
@@ -24,21 +24,26 @@ export async function POST(req: Request) {
 
   const res = NextResponse.json({ ok: true, user: data.user ?? null });
 
-  const sec = process.env.NODE_ENV === "production";
-  res.cookies.set("access_token", data.access_token, {
+  const isProd = process.env.NODE_ENV === "production";
+  const baseCookie = {
     httpOnly: true,
-    secure: sec,
-    sameSite: "lax",
+    secure: isProd,
+    sameSite: (process.env.AUTH_SAMESITE as "lax" | "none" | "strict") || "lax",
     path: "/",
-    maxAge: 60 * 60,
+  } as const;
+
+  // Access token: keep short (e.g. 15–60 min)
+  res.cookies.set("access_token", data.access_token, {
+    ...baseCookie,
+    maxAge: Number(process.env.ACCESS_MAXAGE || 60 * 60), // seconds
   });
+
+  // Refresh token: long lived (e.g. 30–90 days)
   if (data.refresh_token) {
     res.cookies.set("refresh_token", data.refresh_token, {
-      httpOnly: true,
-      secure: sec,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
+      ...baseCookie,
+      // if your app and API are on different domains, set sameSite=none and ensure HTTPS
+      maxAge: Number(process.env.REFRESH_MAXAGE || 60 * 60 * 24 * 60),
     });
   }
 
