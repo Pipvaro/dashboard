@@ -199,6 +199,42 @@ export default function CommandCenter() {
           })}
         />
       </Panel>
+      {/* Proxmox storage (optional) */}
+      <Panel title="Proxmox storage" sub="optional">
+        <Table
+          cols={["Node", "Storage", "Type", "Used", "Total"]}
+          rows={((pve as any)?.storage ?? []).map((s: any) => [
+            s.node,
+            s.storage,
+            s.type,
+            bytes(s.used),
+            bytes(s.total),
+          ])}
+        />
+      </Panel>
+
+      {/* Proxmox guests (optional) */}
+      <Panel
+        title="Proxmox guests (VMs & LXC)"
+        sub="optional"
+      >
+        <Table
+          cols={[
+            "Node",
+            "ID",
+            "Name",
+            "Type",
+            "Status",
+            "CPU %",
+            "Mem %",
+            "Uptime",
+          ]}
+          rows={[
+            ...((pve as any)?.vms ?? []).map((g: any) => guestRow(g)),
+            ...((pve as any)?.lxc ?? []).map((g: any) => guestRow(g)),
+          ]}
+        />
+      </Panel>
 
       <div className="text-xs text-gray-500">
         Generated:{" "}
@@ -344,4 +380,34 @@ function humanUptime(sec?: number) {
   const d = Math.floor(sec / 86400),
     h = Math.floor((sec % 86400) / 3600);
   return d ? `${d}d ${h}h` : `${h}h`;
+}
+function bytes(n?: number) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0,
+    y = x;
+  while (y >= 1024 && i < u.length - 1) {
+    y /= 1024;
+    i++;
+  }
+  return `${y.toFixed(1)} ${u[i]}`;
+}
+function pctFloatTo100(v?: number) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+}
+function guestRow(g: any) {
+  const cpu = pctFloatTo100(g.cpu);
+  const mem = g.maxmem ? Math.round((g.mem / g.maxmem) * 100) : 0;
+  return [
+    g.node ?? "—",
+    g.id ?? "—",
+    g.name ?? "—",
+    (g.type ?? "").toUpperCase(),
+    Badge(g.status),
+    `${cpu}%`,
+    `${mem}%`,
+    humanUptime(g.uptime),
+  ];
 }
