@@ -587,9 +587,9 @@ export default function SettingsPanel({
                     )}
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">{g.desc}</div>
-                  <div className="text-[11px] text-gray-500 mt-1">
+                  {/* <div className="text-[11px] text-gray-500 mt-1">
                     Source: {g.source} · IDs: {g.ids.join(", ")}
-                  </div>
+                  </div> */}
                 </div>
               </label>
             );
