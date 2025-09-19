@@ -124,7 +124,7 @@ export default function CommandCenter() {
             cols={["Time", "From", "Text"]}
             rows={(sum?.latest?.telegram ?? []).map((m) => [
               timeAgo(m.inserted_at),
-              m.from?.username || m.from?.first_name || "—",
+              m.chat.name || m.chat?.title || "—",
               truncate(m.text, 80),
             ])}
           />
