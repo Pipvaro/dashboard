@@ -8,7 +8,7 @@ import { timeAgo } from "@/lib/format";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Image from "next/image";
-import { Menu } from "lucide-react";
+import { Menu, SlidersVertical } from "lucide-react";
 import MobileNav from "@/components/MobileNav";
 import Link from "next/link";
 import SiteBanner from "@/components/SiteBanner";
@@ -96,10 +96,13 @@ export default async function Page({
         </div>
 
         <div className="px-6 pt-6 flex items-center justify-between">
-          <div>
-            <h1 className={cn("text-3xl font-bold text-white")}>Receivers</h1>
-            <p className="text-sm text-gray-500">
-              View and manage all your MetaTrader 5 receivers here.
+          <div className="mr-6">
+            <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
+              <SlidersVertical className="size-5 text-indigo-400" />
+              Receivers
+            </h1>
+            <p className="text-sm text-gray-400">
+              Manage or create all your bot receivers in one place — view status, settings and more. 
             </p>
           </div>
           <NewReceiverDrawer />

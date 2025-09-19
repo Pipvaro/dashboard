@@ -3,6 +3,7 @@ import MobileNav from "@/components/MobileNav";
 import Sidebar from "@/components/Sidebar";
 import SiteBanner from "@/components/SiteBanner";
 import { cn } from "@/lib/utils";
+import { BanknotesIcon, ServerIcon } from "@heroicons/react/24/outline";
 import { Menu } from "lucide-react";
 import Image from "next/image";
 
@@ -22,12 +23,15 @@ export default function Home() {
           />
           <MobileNav />
         </div>
-        <h1 className={cn("text-3xl font-bold px-6 pt-6 text-white")}>
-          Collectors
-        </h1>
-        <p className="px-6 text-sm text-gray-500 pb-6">
-          View and manage all the collectors connected to Pipvaro.
-        </p>
+        <div className="mb-6 ml-8 m-6">
+          <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
+            <ServerIcon className="size-5 text-indigo-400" />
+            Collectors
+          </h1>
+          <p className="text-sm text-gray-400">
+            Have a quick overview of all the connected collectors to Pipvaro.
+          </p>
+        </div>
         <CollectorsList />
       </main>
     </div>

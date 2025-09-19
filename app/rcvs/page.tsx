@@ -4,6 +4,7 @@ import SiteBanner from "@/components/SiteBanner";
 import { headers } from "next/headers";
 import ReceiversTable from "./receivers-table";
 import { InboxIcon } from "@heroicons/react/24/outline";
+import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
@@ -25,11 +26,20 @@ export default async function ReceiversPage() {
 
   return (
     <div className="min-h-screen bg-[#0b0f1a] text-[#d3d5f0]">
-      <div className="flex">
+      <div className="flex flex-col">
         <Sidebar />
         <main className="flex-1 md:ml-72">
+        <SiteBanner />
+        <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
+          <Image
+            src={"/assets/Transparent/logo-beta.svg"}
+            alt="logo"
+            height={100}
+            width={250}
+            className="w-32 md:hidden block"
+          />
           <MobileNav />
-          <SiteBanner />
+        </div>
           <div className="mx-auto w-full max-w-screen-2xl px-4 md:px-8 py-8">
             <div className="mb-6">
               <h1 className="text-2xl font-semibold text-white flex items-center gap-2">

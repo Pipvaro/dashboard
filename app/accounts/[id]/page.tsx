@@ -4,6 +4,9 @@ import { fmtMoney, timeAgo } from "@/lib/format";
 import AccountLive from "./ui/AccountLive";
 import { cookies, headers } from "next/headers";
 import Sidebar from "@/components/Sidebar";
+import SiteBanner from "@/components/SiteBanner";
+import Image from "next/image";
+import MobileNav from "@/components/MobileNav";
 
 async function getAccount(id: string) {
   const h = await headers();
@@ -39,91 +42,115 @@ export default async function Page({
   return (
     <div className="w-full h-screen flex">
       <Sidebar />
-      <div className="w-full max-w-full md:ml-80 mx-8 md:mx-0 md:mr-8 space-y-6">
-        <div className="mt-8">
-          <div className="text-2xl font-semibold text-white">
-            {item?.account?.id
-              ? `${item.account.id} | ${item.account.name ?? "Account"}`
-              : `Account #${id}`}
-          </div>
-          <div className="text-sm text-gray-400">
-            Basic information & snapshot for this MetaTrader account.
-          </div>
+      <div className="w-full max-w-full md:ml-72 space-y-6">
+        <SiteBanner />
+        <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
+          <Image
+            src={"/assets/Transparent/logo-beta.svg"}
+            alt="logo"
+            height={100}
+            width={250}
+            className="w-32 md:hidden block"
+          />
+          <MobileNav />
         </div>
-
-        <Card>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div>
-              <div className="text-white font-medium mb-3">Account</div>
-              <dl className="text-sm text-gray-300 grid grid-cols-2 gap-y-2">
-                <dt className="text-gray-400">Company</dt>
-                <dd>{item?.account?.company ?? "—"}</dd>
-
-                <dt className="text-gray-400">Server</dt>
-                <dd>{item?.account?.server ?? "—"}</dd>
-
-                <dt className="text-gray-400">Type</dt>
-                <dd>{item?.account?.type ?? "—"}</dd>
-
-                <dt className="text-gray-400">Currency</dt>
-                <dd>{item?.account?.currency ?? "—"}</dd>
-
-                <dt className="text-gray-400">Leverage</dt>
-                <dd>
-                  {item?.account?.leverage ? `1:${item.account.leverage}` : "—"}
-                </dd>
-
-                <dt className="text-gray-400">Last snapshot</dt>
-                <dd>{item?.ts ? timeAgo(item.ts) : "—"}</dd>
-              </dl>
+        <div className="mx-8 space-y-6">
+          <div className="mt-8">
+            <div className="text-2xl font-semibold text-white">
+              {item?.account?.id
+                ? `${item.account.id} | ${item.account.name ?? "Account"}`
+                : `Account #${id}`}
             </div>
-
-            <div>
-              <div className="text-white font-medium mb-3">Balances</div>
-              <div className="grid grid-cols-2 gap-3">
-                <MiniStat
-                  title="Balance"
-                  value={money(item?.trading?.balance, item?.account?.currency)}
-                />
-                <MiniStat
-                  title="Equity"
-                  value={money(item?.trading?.equity, item?.account?.currency)}
-                />
-                <MiniStat
-                  title="Free margin"
-                  value={money(
-                    item?.trading?.margin_free,
-                    item?.account?.currency
-                  )}
-                />
-                <MiniStat
-                  title="Margin used"
-                  value={money(item?.trading?.margin, item?.account?.currency)}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="text-white font-medium mb-3">Status</div>
-              <div className="grid grid-cols-2 gap-3">
-                <MiniStat
-                  title="Margin level (%)"
-                  value={pct(item?.trading?.margin_level)}
-                />
-                <MiniStat
-                  title="Open positions"
-                  value={num(item?.trading?.positions_total)}
-                />
-              </div>
+            <div className="text-sm text-gray-400">
+              Basic information & snapshot for this MetaTrader account.
             </div>
           </div>
-        </Card>
 
-        <AccountLive
-          aid={id}
-          receiverId={item?.receiver_id ?? null}
-          currency={item?.account?.currency ?? "USD"}
-        />
+          <Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div>
+                <div className="text-white font-medium mb-3">Account</div>
+                <dl className="text-sm text-gray-300 grid grid-cols-2 gap-y-2">
+                  <dt className="text-gray-400">Company</dt>
+                  <dd>{item?.account?.company ?? "—"}</dd>
+
+                  <dt className="text-gray-400">Server</dt>
+                  <dd>{item?.account?.server ?? "—"}</dd>
+
+                  <dt className="text-gray-400">Type</dt>
+                  <dd>{item?.account?.type ?? "—"}</dd>
+
+                  <dt className="text-gray-400">Currency</dt>
+                  <dd>{item?.account?.currency ?? "—"}</dd>
+
+                  <dt className="text-gray-400">Leverage</dt>
+                  <dd>
+                    {item?.account?.leverage
+                      ? `1:${item.account.leverage}`
+                      : "—"}
+                  </dd>
+
+                  <dt className="text-gray-400">Last snapshot</dt>
+                  <dd>{item?.ts ? timeAgo(item.ts) : "—"}</dd>
+                </dl>
+              </div>
+
+              <div>
+                <div className="text-white font-medium mb-3">Balances</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <MiniStat
+                    title="Balance"
+                    value={money(
+                      item?.trading?.balance,
+                      item?.account?.currency
+                    )}
+                  />
+                  <MiniStat
+                    title="Equity"
+                    value={money(
+                      item?.trading?.equity,
+                      item?.account?.currency
+                    )}
+                  />
+                  <MiniStat
+                    title="Free margin"
+                    value={money(
+                      item?.trading?.margin_free,
+                      item?.account?.currency
+                    )}
+                  />
+                  <MiniStat
+                    title="Margin used"
+                    value={money(
+                      item?.trading?.margin,
+                      item?.account?.currency
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="text-white font-medium mb-3">Status</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <MiniStat
+                    title="Margin level (%)"
+                    value={pct(item?.trading?.margin_level)}
+                  />
+                  <MiniStat
+                    title="Open positions"
+                    value={num(item?.trading?.positions_total)}
+                  />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <AccountLive
+            aid={id}
+            receiverId={item?.receiver_id ?? null}
+            currency={item?.account?.currency ?? "USD"}
+          />
+        </div>
       </div>
     </div>
   );

@@ -17,15 +17,22 @@ async function getAccountLocal(aid: string, origin: string) {
 
 export async function GET(
   req: Request,
-  ctx: { params: Promise<{ aid: string }> }
+  ctx: { params: Promise<{ aid: string }> } // keep your original signature
 ) {
   const { aid } = await ctx.params;
+
   try {
     const url = new URL(req.url);
+
     const limit = Math.min(
       200,
       Math.max(1, Number(url.searchParams.get("limit") || 20))
     );
+
+    // NEW: support OPEN | CLOSED (default CLOSED for history views)
+    const state = String(
+      url.searchParams.get("state") || "CLOSED"
+    ).toUpperCase();
 
     const at = (await cookies()).get("access_token")?.value || "";
     const hdrs: Record<string, string> = {
@@ -33,12 +40,34 @@ export async function GET(
       ...(at ? { Authorization: `Bearer ${at}` } : {}),
     };
 
+    // 1) Primary: new master endpoint (doesn't need receiver_id)
+    const primary = `${API}/accounts/${encodeURIComponent(
+      aid
+    )}/trades?state=${encodeURIComponent(state)}&limit=${encodeURIComponent(
+      String(limit)
+    )}`;
+
+    try {
+      const r = await fetch(primary, { headers: hdrs, cache: "no-store" });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d && Array.isArray(d.items)) {
+        return NextResponse.json({ ok: true, items: d.items }, { status: 200 });
+      }
+    } catch {
+      // fall through to legacy candidates
+    }
+
+    // 2) Legacy fallback (only makes sense for CLOSED history via order reports)
     const origin = `${url.protocol}//${url.host}`;
     const item = await getAccountLocal(aid, origin);
     const rid = item?.receiver_id;
-    if (!rid)
-      return NextResponse.json({ ok: true, items: [] }, { status: 200 });
 
+    // if no receiver or we're asking for OPEN (no legacy source), just return empty
+    if (!rid || state === "OPEN") {
+      return NextResponse.json({ ok: true, items: [] }, { status: 200 });
+    }
+
+    // Try both historical order-report endpoints you used before
     const candidates = [
       `${API}/admin/receivers/${encodeURIComponent(
         rid
@@ -57,13 +86,13 @@ export async function GET(
           return NextResponse.json({ ok: true, items }, { status: 200 });
         }
       } catch {
-        // next candidate
+        // try next
       }
     }
 
-    // Kein bekannter Endpoint vorhanden -> leer zurück
+    // nothing found
     return NextResponse.json({ ok: true, items: [] }, { status: 200 });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ ok: true, items: [] }, { status: 200 });
   }
 }

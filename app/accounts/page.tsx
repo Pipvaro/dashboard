@@ -3,7 +3,7 @@ import Card from "@/components/packs/Card";
 import Sidebar from "@/components/Sidebar";
 import { cn } from "@/lib/utils";
 import { absoluteUrl } from "@/lib/absolute-url";
-import { Menu } from "lucide-react";
+import { Contact, Menu } from "lucide-react";
 import Image from "next/image";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -46,13 +46,15 @@ export default async function Home() {
           <MobileNav />
         </div>
 
-        <h1 className={cn("text-3xl font-bold px-6 pt-6 text-white")}>
-          Accounts
-        </h1>
-        <p className="px-6 text-sm text-gray-500 pb-6">
-          Accounts will be automatically imported and detected by using our
-          receiver.
-        </p>
+        <div className="mb-6 ml-6 m-6">
+          <h1 className="text-2xl font-semibold text-white flex items-center gap-2">
+            <Contact className="size-5 text-indigo-400" />
+            Accounts
+          </h1>
+          <p className="text-sm text-gray-400">
+            Manage all your MetaTrader accounts in one place — view balances, positions and more.
+          </p>
+        </div>
 
         <div className="px-6 space-y-3">
           {accounts.length === 0 ? (

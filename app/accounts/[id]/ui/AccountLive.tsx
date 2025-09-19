@@ -50,7 +50,6 @@ function useAutoJSON<T = any>(url: string, intervalMs = 5000) {
     load();
     timer.current = setInterval(load, intervalMs);
     return () => clearInterval(timer.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, intervalMs]);
 
   return data;
@@ -59,10 +58,8 @@ function useAutoJSON<T = any>(url: string, intervalMs = 5000) {
 type RangeMode = "live" | "1h" | "4h" | "1d";
 
 export default function AccountLive({ aid, receiverId, currency }: Props) {
-  // ---- Range-Auswahl: Standard 4h wie gewünscht
   const [mode, setMode] = useState<RangeMode>("live");
 
-  // URL + Poll-Intervall je nach Range bauen
   const { histUrl, pollMs, subtitle } = useMemo(() => {
     const now = new Date();
     const to = encodeURIComponent(now.toISOString());
@@ -75,11 +72,9 @@ export default function AccountLive({ aid, receiverId, currency }: Props) {
       };
     }
 
-    const hours = mode === "1h" ? 1 : mode === "4h" ? 4 : /* 1d */ 24;
+    const hours = mode === "1h" ? 1 : mode === "4h" ? 4 : 24;
     const from = new Date(now.getTime() - hours * 60 * 60 * 1000);
-    const qs = `from=${encodeURIComponent(
-      from.toISOString()
-    )}&to=${to}&limit=2000`; // genügend Punkte
+    const qs = `from=${encodeURIComponent(from.toISOString())}&to=${to}&limit=2000`;
 
     return {
       histUrl: `/api/accounts/${encodeURIComponent(aid)}/history?${qs}`,
@@ -88,21 +83,23 @@ export default function AccountLive({ aid, receiverId, currency }: Props) {
         mode === "1h"
           ? "Last 1 hour"
           : mode === "4h"
-          ? "Last 4 hours"
-          : "Last 24 hours",
+            ? "Last 4 hours"
+            : "Last 24 hours",
     };
   }, [aid, mode]);
 
-  // History für Charts + Tabelle
   const hist = useAutoJSON<{ ok: boolean; items: HistRow[] }>(histUrl, pollMs);
 
-  // Trades für Trade-History (unabhängig vom Range)
-  const trades = useAutoJSON<{ ok: boolean; items: any[] }>(
-    `/api/accounts/${encodeURIComponent(aid)}/trades?limit=20`,
+  // Open + Closed getrennt abfragen (5s)
+  const open = useAutoJSON<{ ok: boolean; items: any[] }>(
+    `/api/accounts/${encodeURIComponent(aid)}/trades/open?limit=50`,
+    5000
+  );
+  const closed = useAutoJSON<{ ok: boolean; items: any[] }>(
+    `/api/accounts/${encodeURIComponent(aid)}/trades?limit=50`,
     5000
   );
 
-  // Seriendaten für Charts
   const series = useMemo(() => {
     const items = hist?.items ?? [];
     const mapped = items
@@ -118,7 +115,6 @@ export default function AccountLive({ aid, receiverId, currency }: Props) {
     return mapped;
   }, [hist]);
 
-  // Delta-Status (grün/rot) aus den letzten zwei Punkten
   const deltas = useMemo(() => {
     if (!series.length) return { equity: 0, balance: 0, ml: 0, pos: 0 };
     const last = series[series.length - 1];
@@ -135,7 +131,6 @@ export default function AccountLive({ aid, receiverId, currency }: Props) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="text-white font-medium">Analytics</div>
-        {/* Range-Auswahl */}
         <div className="text-xs text-gray-300 flex items-center gap-2">
           <label className="text-gray-400">Range</label>
           <select
@@ -151,7 +146,7 @@ export default function AccountLive({ aid, receiverId, currency }: Props) {
         </div>
       </div>
 
-      {/* Live KPIs mit Up/Down */}
+      {/* KPIs */}
       <Card>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
           <KpiBox
@@ -208,108 +203,84 @@ export default function AccountLive({ aid, receiverId, currency }: Props) {
         </Card>
       </div>
 
-      {/* History Tabelle */}
-      <Card>
-        <SectionTitle
-          title="Account changes"
-          subtitle="Latest snapshots & changes (page size 10)"
-        />
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-[12px] text-gray-400">
-              <tr className="[&>th]:py-2 [&>th]:text-left">
-                <th className="w-44">Time</th>
-                <th>Equity</th>
-                <th>Balance</th>
-                <th>Free margin</th>
-                <th>Margin</th>
-                <th>M. level %</th>
-                <th className="text-right">Positions</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-300">
-              {(hist?.items ?? []).length ? (
-                hist!.items.slice(0, 10).map((x: HistRow, i: number) => (
-                  <tr
-                    key={`${x.ts}-${i}`}
-                    className="[&>td]:py-2 border-t border-gray-800/60"
-                  >
-                    <td className="text-gray-400">{timeAgo(x.ts)}</td>
-                    <td>{fmtMaybeMoney(x.trading?.equity, currency)}</td>
-                    <td>{fmtMaybeMoney(x.trading?.balance, currency)}</td>
-                    <td>{fmtMaybeMoney(x.trading?.margin_free, currency)}</td>
-                    <td>{fmtMaybeMoney(x.trading?.margin, currency)}</td>
-                    <td>{toNum(x.trading?.margin_level) ?? "—"}</td>
-                    <td className="text-start">
-                      {toNum(x.trading?.positions_total) ?? "—"}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-gray-500">
-                    No history yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* Trade-History */}
+      {/* Trade history (CLOSED only, zeigt ursprüngliche Richtung) */}
       <Card>
         <SectionTitle
           title="Trade history"
-          subtitle="Latest execution reports (auto-refresh)"
+          subtitle="Closed trades (auto-refresh every 5s)"
         />
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-[12px] text-gray-400">
               <tr className="[&>th]:py-2 [&>th]:text-left">
-                <th className="w-44">Time</th>
-                <th>State</th>
+                <th className="w-44">Close time</th>
                 <th>Symbol</th>
+                <th>Side</th>
                 <th className="text-right">Volume</th>
-                <th className="text-right">Price</th>
-                <th className="text-right">Ticket</th>
-                <th>Message</th>
+                <th className="text-right">Close price</th>
+                <th className="text-right">P/L</th>
+                <th className="text-right">Swap</th>
+                <th className="text-right">Commission</th>
+                <th className="text-right">Deal #</th>
+                <th>Comment</th>
               </tr>
             </thead>
             <tbody className="text-gray-300">
-              {(trades?.items ?? []).length ? (
-                trades!.items.map((r: any, i: number) => (
-                  <tr
-                    key={`${r._id || r.id || i}`}
-                    className="[&>td]:py-2 border-t border-gray-800/60"
-                  >
-                    <td className="text-gray-400">
-                      {r.ts ? timeAgo(r.ts) : "—"}
-                    </td>
-                    <td>
-                      <span
-                        className={cn(
-                          "px-2 py-0.5 rounded text-[11px]",
-                          stateHue(r.state)
-                        )}
+              {(closed?.items ?? []).length ? (
+                closed!.items
+                  .filter((r: any) => r.state === "CLOSED")
+                  .map((r: any, i: number) => {
+                    const side = displaySide(r); // ggf. invertiert bei CLOSED
+                    return (
+                      <tr
+                        key={`${r._id || i}`}
+                        className="[&>td]:py-2 border-t border-gray-800/60"
                       >
-                        {r.state ?? "—"}
-                      </span>
-                    </td>
-                    <td>{r.symbol_local ?? r.symbol ?? "—"}</td>
-                    <td className="text-right">{r.volume ?? "—"}</td>
-                    <td className="text-right">
-                      {typeof r.price === "number" ? r.price.toFixed(2) : "—"}
-                    </td>
-                    <td className="text-right">{r.ticket ?? "—"}</td>
-                    <td className="text-gray-400">{r.message ?? "—"}</td>
-                  </tr>
-                ))
+                        <td className="text-gray-400">
+                          {r.close_time ? timeAgo(r.close_time) : "—"}
+                        </td>
+                        <td>{r.symbol ?? "—"}</td>
+                        <td>
+                          <span
+                            className={cn(
+                              "px-2 py-0.5 rounded text-[11px]",
+                              side === "BUY"
+                                ? "bg-emerald-500/10 text-emerald-300"
+                                : "bg-sky-500/10 text-sky-300"
+                            )}
+                          >
+                            {side}
+                          </span>
+                        </td>
+                        <td className="text-right">{r.volume ?? "—"}</td>
+                        <td className="text-right">
+                          {numOrDash(r.close_price)}
+                        </td>
+                        <td
+                          className={cn(
+                            "text-right",
+                            (r.profit ?? 0) >= 0
+                              ? "text-emerald-400"
+                              : "text-rose-400"
+                          )}
+                        >
+                          {typeof r.profit === "number"
+                            ? `${r.profit.toFixed(2)} ${currency}`
+                            : "—"}
+                        </td>
+                        <td className="text-right">{numOrDash(r.swap)}</td>
+                        <td className="text-right">
+                          {numOrDash(r.commission)}
+                        </td>
+                        <td className="text-right">{r.deal_ticket ?? "—"}</td>
+                        <td className="text-gray-400">{r.comment ?? "—"}</td>
+                      </tr>
+                    );
+                  })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-gray-500">
-                    No trades found (endpoint may be disabled due to beta
-                    testing).
+                  <td colSpan={10} className="py-10 text-center text-gray-500">
+                    No closed trades yet.
                   </td>
                 </tr>
               )}
@@ -324,6 +295,10 @@ export default function AccountLive({ aid, receiverId, currency }: Props) {
 function toNum(v: any): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function numOrDash(v: any) {
+  return typeof v === "number" ? v.toFixed(2) : "—";
 }
 
 function fmtMaybeMoney(v: any, ccy: string) {
@@ -417,17 +392,18 @@ function KpiBox({
         {delta === 0
           ? "—"
           : up
-          ? `▲ ${delta.toFixed(2)}`
-          : `▼ ${Math.abs(delta).toFixed(2)}`}
+            ? `▲ ${delta.toFixed(2)}`
+            : `▼ ${Math.abs(delta).toFixed(2)}`}
       </div>
     </div>
   );
 }
 
-function stateHue(s?: string) {
-  const x = String(s || "").toUpperCase();
-  if (x === "FILLED" || x === "CLOSED")
-    return "bg-emerald-500/10 text-emerald-300";
-  if (x === "REJECTED" || x === "ERROR") return "bg-rose-500/10 text-rose-300";
-  return "bg-gray-600/20 text-gray-300";
+/** Zeigt bei CLOSED die ursprüngliche Positionsrichtung (BUY, wenn mit SELL geschlossen wurde) */
+function displaySide(r: any) {
+  const s = String(r?.side || "").toUpperCase();
+  if (String(r?.state || "").toUpperCase() !== "CLOSED") return s || "—";
+  if (s === "SELL") return "BUY";
+  if (s === "BUY") return "SELL";
+  return s || "—";
 }

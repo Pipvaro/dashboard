@@ -2,6 +2,9 @@ import Sidebar from "@/components/Sidebar";
 import { absoluteUrl } from "@/lib/absolute-url";
 import { cookies } from "next/headers";
 import SettingsPanel from "./settings-panel";
+import SiteBanner from "@/components/SiteBanner";
+import Image from "next/image";
+import MobileNav from "@/components/MobileNav";
 
 export default async function Page({
   params,
@@ -41,17 +44,19 @@ export default async function Page({
     <div className="flex">
       <Sidebar />
       <main className="min-h-screen md:ml-72 w-full">
-        <div className="bg-[#3f4bf2] w-full py-2 px-4 text-white">
-          <p className="text-sm">
-            🚀 Welcome to Pipvaro! Your trading automation starts here.{" "}
-            <strong>
-              Since we are currently in beta phase some features may not be
-              available.
-            </strong>
-          </p>
+        <SiteBanner />
+        <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
+          <Image
+            src={"/assets/Transparent/logo-beta.svg"}
+            alt="logo"
+            height={100}
+            width={250}
+            className="w-32 md:hidden block"
+          />
+          <MobileNav />
         </div>
         {/* mobile topbar könnte hier verbleiben */}
-        <div className="max-w-6xl mx-auto m-6">
+        <div className="max-w-6xl m-6 mx-8 w-full mx-auto">
           <h1 className="text-2xl font-semibold text-white mb-4">
             {receiver?.name ?? rid}
           </h1>

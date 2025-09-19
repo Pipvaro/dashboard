@@ -222,6 +222,11 @@ export default function NewsPage() {
   return (
     <div className="min-h-screen bg-[#0b0f14] overflow-x-hidden">
       <Sidebar />
+      <div className="md:ml-72">
+
+      <SiteBanner />
+      </div>
+
       <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
         <Image
           src={"/assets/Transparent/logo-beta.svg"}
@@ -233,7 +238,6 @@ export default function NewsPage() {
         <MobileNav />
       </div>
       <main className="md:ml-72">
-        <SiteBanner />
         <div className="px-6 py-6">
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">

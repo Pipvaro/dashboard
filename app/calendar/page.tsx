@@ -269,6 +269,9 @@ export default function CalendarPage() {
       <Sidebar />
 
       {/* Mobile header */}
+      <div className="md:ml-72">
+      <SiteBanner />
+      </div>
       <div className="h-20 border-b md:hidden border-gray-700/50 flex justify-between items-center px-4">
         <Image
           src={"/assets/Transparent/logo-beta.svg"}
@@ -280,7 +283,6 @@ export default function CalendarPage() {
         <MobileNav />
       </div>
       <main className="md:ml-72">
-        <SiteBanner />
         <div className="px-4 md:px-6 py-6 space-y-4">
           {/* Header bar – FTMO-like */}
           <div>
