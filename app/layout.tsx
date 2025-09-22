@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Suspense } from "react";
@@ -33,6 +34,13 @@ export default function RootLayout({
       >
         {/* Nur ein Suspense-Fallback um deine Pages – sonst nichts ändern */}
         <Suspense fallback={<AppSkeleton />}>{children}</Suspense>
+
+        {/* Drittanbieter-Widget */}
+        <Script
+          src="https://widget.nixera.net/widget.js"
+          strategy="afterInteractive"
+          data-organization-id="org_333WJG9j9bu3PyJkfp3XHfRdbGB"
+        />
       </body>
     </html>
   );
