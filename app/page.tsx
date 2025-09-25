@@ -18,6 +18,52 @@ import MobileNav from "@/components/MobileNav";
 import SiteBanner from "@/components/SiteBanner";
 import Card from "@/components/packs/Card";
 
+// --- ultra-light iOS WebKit shims (harmlos auf allen Browsern) ---
+/* Array.prototype.at (iOS 14/15) */
+if (!Array.prototype.at) {
+  // eslint-disable-next-line no-extend-native
+  Object.defineProperty(Array.prototype, "at", {
+    value: function (n: number) {
+      const i = Math.trunc(n) || 0;
+      const k = i < 0 ? this.length + i : i;
+      return this[k];
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+/* Object.hasOwn (iOS 14) */
+if (!Object.hasOwn) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (Object as any).hasOwn = function (obj: unknown, prop: PropertyKey) {
+    return Object.prototype.hasOwnProperty.call(obj, prop);
+  };
+}
+
+/* structuredClone (iOS 14/15) */
+if (typeof globalThis.structuredClone !== "function") {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).structuredClone = function (val: unknown) {
+    return JSON.parse(JSON.stringify(val));
+  };
+}
+
+/* Promise.allSettled (ganz alte iOS) */
+if (!Promise.allSettled) {
+  Promise.allSettled = function (promises: readonly Promise<unknown>[]) {
+    return Promise.all(
+      promises.map((p) =>
+        p.then(
+          (value) => ({ status: "fulfilled", value }),
+          (reason) => ({ status: "rejected", reason })
+        )
+      )
+    ) as unknown as Promise<PromiseSettledResult<unknown>[]>;
+  };
+}
+
+
 /* ---------- tiny UI bits ---------- */
 function Stat({
   icon,
