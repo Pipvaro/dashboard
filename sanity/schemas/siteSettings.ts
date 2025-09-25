@@ -47,5 +47,13 @@ export default defineType({
       title: "Optional Link URL",
       type: "url",
     }),
+    defineField({
+      name: "allowRegistration",
+      title: "Allow New Registrations",
+      type: "boolean",
+      description:
+        "If disabled, the /register page will show a notice and hide the form.",
+      initialValue: true,
+    }),
   ],
 });

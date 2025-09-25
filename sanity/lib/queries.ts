@@ -41,7 +41,9 @@ export const SITE_SETTINGS_QUERY = groq`*[_type == "siteSettings"][0]{
   bannerTone,
   bannerText,
   bannerLinkText,
-  bannerLinkUrl
+  bannerLinkUrl,
+  allowRegistration,
+  allowNewRegistrations
 }`;
 
 export const PLANS_QUERY = groq`*[_type == "plan"] | order(coalesce(order, 999) asc) {
