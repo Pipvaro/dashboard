@@ -270,13 +270,15 @@ function LineChart({
           const d = pts
             .map((p, i) => `${i ? "L" : "M"}${sx(p.x)},${sy(p.y)}`)
             .join(" ");
+          // iOS-kompatibel: kein .at(-1)
+          const last = pts[pts.length - 1];
           const area =
             `M${sx(pts[0].x)},${sy(pts[0].y)} ` +
             pts
               .slice(1)
               .map((p) => `L${sx(p.x)},${sy(p.y)}`)
               .join(" ") +
-            ` L${sx(pts.at(-1)!.x)},${sy(minY)} L${sx(pts[0].x)},${sy(minY)} Z`;
+            ` L${sx(last.x)},${sy(minY)} L${sx(pts[0].x)},${sy(minY)} Z`;
 
           return (
             <g key={idx}>
