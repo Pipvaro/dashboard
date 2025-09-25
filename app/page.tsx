@@ -392,7 +392,7 @@ export default function Home() {
     const [r1, r2, r3] = await Promise.all([
       fetch("/api/my-receivers", { cache: "no-store" }),
       fetch("/api/my-accounts", { cache: "no-store" }),
-      fetch("/api/my-trades?limit=10", { cache: "no-store" }).catch(() => null),
+      fetch("/api/my-accounts", { cache: "no-store" }).catch(() => null),
     ]);
     if (!r1.ok || !r2.ok) throw new Error("fetch_failed");
     const d1 = await r1.json();
