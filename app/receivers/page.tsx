@@ -8,7 +8,7 @@ import { timeAgo } from "@/lib/format";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Image from "next/image";
-import { Menu, SlidersVertical } from "lucide-react";
+import { Menu, SlidersVertical, Download } from "lucide-react";
 import MobileNav from "@/components/MobileNav";
 import Link from "next/link";
 import SiteBanner from "@/components/SiteBanner";
@@ -65,19 +65,33 @@ export default async function Page({
   const key = typeof sp?.key === "string" ? sp.key : undefined;
   const master = typeof sp?.master === "string" ? sp.master : undefined;
 
-  const url = await absoluteUrl("/api/my-receivers");
   const store = await cookies();
   const cookieHeader = store
     .getAll()
     .map((c) => `${c.name}=${c.value}`)
     .join("; ");
-  const res = await fetch(url, {
+
+  // Receivers
+  const receiversUrl = await absoluteUrl("/api/my-receivers");
+  const res = await fetch(receiversUrl, {
     headers: { cookie: cookieHeader },
     cache: "no-store",
   });
   if (res.status === 401) redirect(`/login?next=/receivers`);
   const data = await res.json().catch(() => ({}));
   const receivers: any[] = Array.isArray(data?.receivers) ? data.receivers : [];
+
+  // EA download (same source as in CreateReceiver dialog)
+  // Expected response: { url: string, version?: string }
+  const eaInfoUrl = await absoluteUrl("/api/ea/latest");
+  const eaResp = await fetch(eaInfoUrl, {
+    headers: { cookie: cookieHeader },
+    cache: "no-store",
+  }).catch(() => null);
+  const eaInfo =
+    eaResp && eaResp.ok ? await eaResp.json().catch(() => null) : null;
+  const eaUrl: string | undefined = eaInfo?.url;
+  const eaVersion: string | undefined = eaInfo?.version;
 
   return (
     <div className="w-full h-screen flex">
@@ -102,10 +116,25 @@ export default async function Page({
               Receivers
             </h1>
             <p className="text-sm text-gray-400">
-              Manage or create all your bot receivers in one place — view status, settings and more. 
+              Manage or create all your bot receivers in one place — view
+              status, settings and more.
             </p>
           </div>
-          <NewReceiverDrawer />
+
+          {/* Right side actions: Download EA + New Receiver */}
+          <div className="flex items-center gap-2">
+            {eaUrl && (
+              <a
+                href={eaUrl}
+                className="hidden md:inline-flex items-center gap-2 rounded-lg bg-transparent hover:bg-gray-700/50 text-white px-3 py-2 text-sm shadow-sm transition border"
+                download
+              >
+                <Download className="size-4" />
+                Download EA{eaVersion ? ` v${eaVersion}` : ""}
+              </a>
+            )}
+            <NewReceiverDrawer />
+          </div>
         </div>
 
         <div className="px-6 space-y-3 mt-6">
@@ -172,7 +201,7 @@ export default async function Page({
                   className="block"
                 >
                   <Card>
-                    {/* Header (kompakt) */}
+                    {/* Header (compact) */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -216,7 +245,7 @@ export default async function Page({
                       </div>
                     </div>
 
-                    {/* Meta rows (kompakt, geringe Gaps) */}
+                    {/* Meta rows */}
                     <div className="mt-2 grid grid-cols-1 xl:grid-cols-3 gap-2">
                       <div className="space-y-1.5">
                         <Row label="Allowed">
