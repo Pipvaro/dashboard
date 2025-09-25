@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +15,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Check, Copy, KeyRound } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 function CopyLine({ label, value }: { label: string; value?: string }) {
   const [copied, setCopied] = useState(false);
@@ -56,6 +56,7 @@ type EaLatest = {
 };
 
 export default function NewReceiverDrawer() {
+  const params = useSearchParams();
   const router = useRouter();
   const [isRefreshing, startTransition] = useTransition();
 
@@ -72,6 +73,16 @@ export default function NewReceiverDrawer() {
   function refreshPage() {
     startTransition(() => router.refresh()); // re-render der Server-Seite
   }
+
+  const openFromQuery = params.get("open") === "create";
+
+  // assume you already have internal state `open` and setter `setOpen`
+  // open drawer when arriving with ?open=create
+  useEffect(() => {
+    if (openFromQuery) {
+      setOpen(true);
+    }
+  }, [openFromQuery]);
 
   async function create() {
     setLoading(true);
@@ -137,6 +148,9 @@ export default function NewReceiverDrawer() {
           setName("");
           setEa(null);
           setEaLoading(false);
+          const sp = new URLSearchParams(Array.from(params.entries()));
+          sp.delete("open");
+          router.replace(`/receivers?${sp.toString()}`, { scroll: false });
         }
       }}
     >
