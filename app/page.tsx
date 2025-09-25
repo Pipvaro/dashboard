@@ -364,6 +364,47 @@ function n(v: any, d = 0) {
   const x = Number(v);
   return Number.isFinite(x) ? x : d;
 }
+
+/* Safari-sicher: Zeitstempel robust in ms parsen */
+function toMs(ts: unknown): number | null {
+  if (ts == null) return null;
+
+  if (typeof ts === "number" && Number.isFinite(ts)) {
+    return ts > 1e12 ? ts : ts * 1000; // sek -> ms
+  }
+  if (typeof ts === "string") {
+    const trimmed = ts.trim();
+
+    // reine Zahl als String
+    if (/^\d+$/.test(trimmed)) {
+      const num = Number(trimmed);
+      if (!Number.isFinite(num)) return null;
+      return num > 1e12 ? num : num * 1000;
+    }
+
+    // "YYYY-MM-DD HH:mm:ss" -> "YYYY-MM-DDTHH:mm:ssZ"
+    let candidate = trimmed.replace(" ", "T");
+    // wenn keine TZ vorhanden: UTC annehmen
+    if (!/[zZ]|[+\-]\d{2}:?\d{2}$/.test(candidate)) candidate += "Z";
+
+    const ms = Date.parse(candidate);
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  const d = new Date(ts as any);
+  const ms = d.valueOf();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/* Tages-Key ohne toISOString() (Safari-sicher) */
+function safeDayKey(ms: number): string {
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function profitOf(t: any): number {
   const cand = [
     t?.profit,
@@ -620,7 +661,7 @@ export default function Home() {
     }
 
     const online = receivers.filter((r) => {
-      const last = r?.last_seen ? new Date(r.last_seen).getTime() : 0;
+      const last = r?.last_seen ? toMs(r.last_seen) : null;
       return last && Date.now() - last < 90_000;
     });
 
@@ -674,39 +715,45 @@ export default function Home() {
       .slice(0, 10);
   }, [accounts, receivers]);
 
-  // Vollserien (ungefiltert)
+  // Vollserien (ungefiltert) – iOS-sicheres Date-Parsing
   const equitySeriesFull = useMemo(() => {
     const rows = (metrics?.length ? metrics : history) || [];
-    const pts = rows
-      .map((r: any) => {
-        const ts = r?.ts || r?.time || r?.timestamp || r?.created_at;
-        const eq =
-          r?.equity ??
-          r?.trading?.equity ??
-          r?.account?.equity ??
-          r?.metrics?.equity ??
-          null;
-        return ts && eq != null ? { x: +new Date(ts), y: Number(eq) } : null;
-      })
-      .filter(Boolean) as { x: number; y: number }[];
+    const pts: { x: number; y: number }[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r: any = rows[i];
+      const ts = r?.ts || r?.time || r?.timestamp || r?.created_at;
+      const ms = toMs(ts);
+      const eq =
+        r?.equity ??
+        r?.trading?.equity ??
+        r?.account?.equity ??
+        r?.metrics?.equity ??
+        null;
+      if (ms != null && eq != null && Number.isFinite(Number(eq))) {
+        pts.push({ x: ms, y: Number(eq) });
+      }
+    }
     pts.sort((a, b) => a.x - b.x);
     return pts;
   }, [metrics, history]);
 
   const balanceSeriesFull = useMemo(() => {
     const rows = (metrics?.length ? metrics : history) || [];
-    const pts = rows
-      .map((r: any) => {
-        const ts = r?.ts || r?.time || r?.timestamp || r?.created_at;
-        const bal =
-          r?.balance ??
-          r?.trading?.balance ??
-          r?.account?.balance ??
-          r?.metrics?.balance ??
-          null;
-        return ts && bal != null ? { x: +new Date(ts), y: Number(bal) } : null;
-      })
-      .filter(Boolean) as { x: number; y: number }[];
+    const pts: { x: number; y: number }[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r: any = rows[i];
+      const ts = r?.ts || r?.time || r?.timestamp || r?.created_at;
+      const ms = toMs(ts);
+      const bal =
+        r?.balance ??
+        r?.trading?.balance ??
+        r?.account?.balance ??
+        r?.metrics?.balance ??
+        null;
+      if (ms != null && bal != null && Number.isFinite(Number(bal))) {
+        pts.push({ x: ms, y: Number(bal) });
+      }
+    }
     pts.sort((a, b) => a.x - b.x);
     return pts;
   }, [metrics, history]);
@@ -738,15 +785,16 @@ export default function Home() {
     [balanceSeriesFull, balRange]
   );
 
-  // PnL by day (closed trades)
+  // PnL by day (closed trades) – Safari-sicher (kein toISOString)
   const pnlByDay = useMemo(() => {
     if (trades === null) return []; // initial skeleton handled below
     if (!trades || trades.length === 0) return [];
     const map = new Map<string, number>();
     trades.forEach((t: any) => {
       const ts = t?.close_time || t?.time || t?.ts || t?.close_at;
-      const d = ts ? new Date(ts) : null;
-      const key = d ? d.toISOString().slice(0, 10) : "unknown";
+      const ms = toMs(ts);
+      if (ms == null) return;
+      const key = safeDayKey(ms);
       const p = profitOf(t);
       map.set(key, (map.get(key) || 0) + p);
     });
@@ -907,10 +955,8 @@ export default function Home() {
                   {receivers.slice(0, 5).map((r) => {
                     const st = r?.settings || {};
                     const rules = st?.trade_rules || {};
-                    const last = r?.last_seen
-                      ? new Date(r.last_seen).getTime()
-                      : 0;
-                    const online = last && Date.now() - last < 90_000;
+                    const last = r?.last_seen ? toMs(r.last_seen) : null;
+                    const online = !!(last && Date.now() - last < 90_000);
                     const acc = r?.account_snapshot?.account || {};
                     const equity = n(r?.account_snapshot?.trading?.equity);
                     return (
