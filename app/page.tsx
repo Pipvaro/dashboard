@@ -18,40 +18,58 @@ import MobileNav from "@/components/MobileNav";
 import SiteBanner from "@/components/SiteBanner";
 import Card from "@/components/packs/Card";
 
-// --- ultra-light iOS WebKit shims (harmlos auf allen Browsern) ---
+/* ---------------- iOS/WebKit Compatibility Shims (no design changes) ---------------- */
+// globalThis (iOS 12)
+if (
+  typeof (globalThis as any) === "undefined" &&
+  typeof window !== "undefined"
+) {
+  (window as any).globalThis = window as any;
+}
 /* Array.prototype.at (iOS 14/15) */
 if (!Array.prototype.at) {
   // eslint-disable-next-line no-extend-native
   Object.defineProperty(Array.prototype, "at", {
     value: function (n: number) {
       const i = Math.trunc(n) || 0;
-      const k = i < 0 ? this.length + i : i;
-      return this[k];
+      const k = i < 0 ? (this as unknown[]).length + i : i;
+      return (this as unknown[])[k];
     },
     writable: true,
     configurable: true,
   });
 }
-
+/* Array.prototype.flatMap (iOS < 13) */
+if (!Array.prototype.flatMap) {
+  // eslint-disable-next-line no-extend-native
+  Object.defineProperty(Array.prototype, "flatMap", {
+    value: function (callback: any, thisArg?: any) {
+      return Array.prototype.concat.apply(
+        [],
+        Array.prototype.map.call(this, callback, thisArg)
+      );
+    },
+    writable: true,
+    configurable: true,
+  });
+}
 /* Object.hasOwn (iOS 14) */
-if (!Object.hasOwn) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (!(Object as any).hasOwn) {
   (Object as any).hasOwn = function (obj: unknown, prop: PropertyKey) {
-    return Object.prototype.hasOwnProperty.call(obj, prop);
+    return Object.prototype.hasOwnProperty.call(obj as object, prop);
   };
 }
-
 /* structuredClone (iOS 14/15) */
-if (typeof globalThis.structuredClone !== "function") {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (typeof (globalThis as any).structuredClone !== "function") {
   (globalThis as any).structuredClone = function (val: unknown) {
     return JSON.parse(JSON.stringify(val));
   };
 }
-
-/* Promise.allSettled (ganz alte iOS) */
-if (!Promise.allSettled) {
-  Promise.allSettled = function (promises: readonly Promise<unknown>[]) {
+/* Promise.allSettled (sehr alte iOS) */
+if (!(Promise as any).allSettled) {
+  (Promise as any).allSettled = function (
+    promises: readonly Promise<unknown>[]
+  ) {
     return Promise.all(
       promises.map((p) =>
         p.then(
@@ -62,7 +80,6 @@ if (!Promise.allSettled) {
     ) as unknown as Promise<PromiseSettledResult<unknown>[]>;
   };
 }
-
 
 /* ---------- tiny UI bits ---------- */
 function Stat({
@@ -237,7 +254,12 @@ function LineChart({
   const width = 900;
   const pad = 70; // genug Platz links für $49,xxx
 
-  const all = series.flatMap((s) => s.points);
+  // Kein .flatMap mehr – iOS-safe
+  const all: { x: number; y: number }[] = [];
+  for (let s = 0; s < series.length; s++) {
+    const pts = series[s]?.points || [];
+    for (let i = 0; i < pts.length; i++) all.push(pts[i]);
+  }
   if (all.length === 0)
     return (
       <div className="text-[11px] text-gray-500">No data in selected range</div>
@@ -316,8 +338,7 @@ function LineChart({
           const d = pts
             .map((p, i) => `${i ? "L" : "M"}${sx(p.x)},${sy(p.y)}`)
             .join(" ");
-          // iOS-kompatibel: kein .at(-1)
-          const last = pts[pts.length - 1];
+          const last = pts[pts.length - 1]; // kein .at
           const area =
             `M${sx(pts[0].x)},${sy(pts[0].y)} ` +
             pts
