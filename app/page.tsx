@@ -1016,7 +1016,7 @@ export default function Home() {
               <Card>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="text-white font-medium">Analytics</div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-col md:flex-row">
                     {accountOptions.length > 1 && (
                       <div className="text-sm text-gray-300 flex items-center gap-2">
                         <span>Account:</span>
