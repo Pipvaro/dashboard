@@ -365,45 +365,58 @@ function n(v: any, d = 0) {
   return Number.isFinite(x) ? x : d;
 }
 
-/* Safari-sicher: Zeitstempel robust in ms parsen */
-function toMs(ts: unknown): number | null {
-  if (ts == null) return null;
+/* Safari-sicher: Zeitstempel robust in ms parsen (unterstützt MT4/5 usw.) */
+function toMs(raw: unknown): number | null {
+  if (raw == null) return null;
 
-  if (typeof ts === "number" && Number.isFinite(ts)) {
-    return ts > 1e12 ? ts : ts * 1000; // sek -> ms
+  // number direkt
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return raw > 1e12 ? raw : raw * 1000; // sek -> ms
   }
-  if (typeof ts === "string") {
-    const trimmed = ts.trim();
 
-    // reine Zahl als String
-    if (/^\d+$/.test(trimmed)) {
-      const num = Number(trimmed);
+  if (typeof raw === "string") {
+    const s = raw.trim();
+
+    // numerischer String (auch mit Dezimalstelle)
+    if (/^\d+(\.\d+)?$/.test(s)) {
+      const num = Number(s);
       if (!Number.isFinite(num)) return null;
-      return num > 1e12 ? num : num * 1000;
+      return num > 1e12 ? num : Math.round(num * 1000); // seconds -> ms
     }
 
-    // "YYYY-MM-DD HH:mm:ss" -> "YYYY-MM-DDTHH:mm:ssZ"
-    let candidate = trimmed.replace(" ", "T");
-    // wenn keine TZ vorhanden: UTC annehmen
-    if (!/[zZ]|[+\-]\d{2}:?\d{2}$/.test(candidate)) candidate += "Z";
+    // typische Broker-Formate zu ISO normalisieren
+    // Beispiele:
+    //  - 2025.01.29 12:34:56
+    //  - 2025/01/29 12:34
+    //  - 2025-01-29 12:34:56
+    let d = s
+      .replace(/^(\d{4})[./-](\d{2})[./-](\d{2})/, "$1-$2-$3") // Datum trenner -> '-'
+      .replace(" ", "T"); // Space -> T
 
-    const ms = Date.parse(candidate);
-    return Number.isFinite(ms) ? ms : null;
+    // Sekunden optional ergänzen (Safari ist pingelig)
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d)) d += ":00";
+
+    // Wenn keine TZ vorhanden: als UTC interpretieren
+    if (!/[zZ]|[+\-]\d{2}:?\d{2}$/.test(d)) d += "Z";
+
+    const ms = Date.parse(d);
+    if (Number.isFinite(ms)) return ms;
   }
 
-  const d = new Date(ts as any);
-  const ms = d.valueOf();
+  // Fallback
+  const ms = new Date(raw as any).valueOf();
   return Number.isFinite(ms) ? ms : null;
 }
 
 /* Tages-Key ohne toISOString() (Safari-sicher) */
 function safeDayKey(ms: number): string {
   const d = new Date(ms);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
 
 function profitOf(t: any): number {
   const cand = [
@@ -785,19 +798,33 @@ export default function Home() {
     [balanceSeriesFull, balRange]
   );
 
-  // PnL by day (closed trades) – Safari-sicher (kein toISOString)
+  // PnL by day (closed trades) – robustes Timestamp-Parsing + mehrere Feldnamen
   const pnlByDay = useMemo(() => {
     if (trades === null) return []; // initial skeleton handled below
     if (!trades || trades.length === 0) return [];
     const map = new Map<string, number>();
-    trades.forEach((t: any) => {
-      const ts = t?.close_time || t?.time || t?.ts || t?.close_at;
-      const ms = toMs(ts);
-      if (ms == null) return;
+
+    for (let i = 0; i < trades.length; i++) {
+      const t: any = trades[i];
+
+      // verschiedene mögliche Zeit-Feldnamen
+      const rawTs =
+        t?.close_time ??
+        t?.closeTime ??
+        t?.closed_at ??
+        t?.close_at ??
+        t?.exit_time ??
+        t?.time ??
+        t?.ts;
+
+      const ms = toMs(rawTs);
+      if (ms == null) continue;
+
       const key = safeDayKey(ms);
       const p = profitOf(t);
       map.set(key, (map.get(key) || 0) + p);
-    });
+    }
+
     return Array.from(map.entries())
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => (a.label > b.label ? 1 : -1))
