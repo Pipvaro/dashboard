@@ -7,12 +7,17 @@ import {
   TrashIcon,
   KeyIcon,
   PowerIcon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 import Card from "@/components/packs/Card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { fmtMoney, timeAgo } from "@/lib/format";
 import { useRouter } from "next/navigation";
+
+/* small util */
+const uniq = (arr: string[]) =>
+  Array.from(new Set(arr.map((s) => s.trim()).filter(Boolean)));
 
 function Chip({
   children,
@@ -51,7 +56,6 @@ const GROUPS = [
     title: "Fusion",
     desc: "Free signals – suitable for getting started.",
     requires: null as null | "lunar" | "nova",
-    // Gold Trader Viper
     ids: [-1002450182599],
     source: "Gold Trader Viper",
     badge: null,
@@ -61,7 +65,7 @@ const GROUPS = [
     title: "Lunar",
     desc: "Advanced strategies. Requires Lunar or Nova.",
     requires: "lunar" as const,
-    ids: [-1002267488931], // Taurus
+    ids: [-1002267488931],
     source: "Taurus",
     badge: "Requires Lunar or Nova",
   },
@@ -70,7 +74,7 @@ const GROUPS = [
     title: "Nova",
     desc: "Pro signals for the highest performance tier.",
     requires: "nova" as const,
-    ids: [-1002793584288], // Forexpert
+    ids: [-1002793584288],
     source: "Forexpert",
     badge: "Requires Nova",
   },
@@ -80,11 +84,13 @@ function canUse(
   plan: "fusion" | "lunar" | "nova",
   item: (typeof GROUPS)[number]
 ) {
-  if (!item.requires) return true; // Fusion
+  if (!item.requires) return true;
   if (item.requires === "lunar") return plan === "lunar" || plan === "nova";
   if (item.requires === "nova") return plan === "nova";
   return false;
 }
+
+/* ----------------------------- COMPONENT ----------------------------- */
 
 export default function SettingsPanel({
   rid,
@@ -101,18 +107,72 @@ export default function SettingsPanel({
   const tr = initial?.trade_rules || {};
   const dd = initial?.drawdown || {};
 
-  // form states
+  // General
   const [name, setName] = useState<string>(receiver?.name ?? "");
-  const [symbols, setSymbols] = useState<string>(
-    (allowed?.symbols || []).join(",")
+
+  /* -------- Symbols: checkbox grid + add -------- */
+  const DEFAULT_SYMBOLS = [
+    "XAUUSD",
+    "EURUSD",
+    "GBPUSD",
+    "USDCAD",
+    "EURJPY",
+    "JPYEUR",
+    "GBPJPY",
+    "AUDUSD",
+    "CHFJPY",
+    "BTCUSD",
+  ];
+  const initialSymbols: string[] = Array.isArray(allowed?.symbols)
+    ? allowed.symbols.map(String)
+    : [];
+
+  const [availableSymbols, setAvailableSymbols] = useState<string[]>(
+    uniq([...DEFAULT_SYMBOLS, ...initialSymbols]).sort()
   );
-  const [newsMode, setNewsMode] = useState<string>(news?.mode ?? "window");
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>(
+    uniq(initialSymbols)
+  );
+  const [newSymbol, setNewSymbol] = useState("");
+
+  function toggleSymbol(sym: string) {
+    setSelectedSymbols((prev) =>
+      prev.includes(sym) ? prev.filter((s) => s !== sym) : [...prev, sym]
+    );
+  }
+  function addSymbol() {
+    const sym = newSymbol.trim().toUpperCase();
+    if (!sym) return;
+    setAvailableSymbols((prev) => uniq([...prev, sym]).sort());
+    setSelectedSymbols((prev) => uniq([...prev, sym]));
+    setNewSymbol("");
+  }
+
+  /* -------- News UI: on/off + sliders -------- */
+  // UI zeigt "on/off", Backend speichert "window"/"off"
+  const initialNewsUi = (news?.mode ?? "window") === "window" ? "on" : "off";
+  const [newsUiMode, setNewsUiMode] = useState<"on" | "off">(initialNewsUi);
+
+  // seconds in state (wie bisher), UI-Slider arbeiten in Minuten
   const [newsBefore, setNewsBefore] = useState<string>(
     String(news?.before_sec ?? 300)
   );
   const [newsAfter, setNewsAfter] = useState<string>(
     String(news?.after_sec ?? 300)
   );
+
+  // Slider-Range in Minuten
+  const NEWS_MAX_MIN = 120; // 0..120min
+  const beforeMin = Math.max(
+    0,
+    Math.min(NEWS_MAX_MIN, Math.round((Number(newsBefore) || 0) / 60))
+  );
+  const afterMin = Math.max(
+    0,
+    Math.min(NEWS_MAX_MIN, Math.round((Number(newsAfter) || 0) / 60))
+  );
+
+  /* -------- Position limits -------- */
   const [maxTotal, setMaxTotal] = useState<string>(
     String(pos?.max_open_total ?? 5)
   );
@@ -121,7 +181,7 @@ export default function SettingsPanel({
   );
   const [posEnabled, setPosEnabled] = useState<boolean>(!!pos?.enabled);
 
-  // trade rules basics
+  /* -------- Trade rules -------- */
   const [units, setUnits] = useState<string>(tr?.units ?? "pips");
   const [slMode, setSlMode] = useState<string>(tr?.sl?.mode ?? "from_signal");
   const [slPips, setSlPips] = useState<string>(
@@ -145,43 +205,44 @@ export default function SettingsPanel({
     String(tr?.volume?.per_tp ?? 0.01)
   );
 
+  /* -------- Risk -------- */
   const [dailyPct, setDailyPct] = useState<string>(String(dd?.daily?.pct ?? 5));
   const [maxPct, setMaxPct] = useState<string>(String(dd?.max?.pct ?? 20));
 
-  // groups selection (map auf IDs)
+  /* -------- Groups -------- */
   const initialIds = (allowed?.signal_sources || []).map((x: any) => String(x));
   const [selectedKeys, setSelectedKeys] = useState<string[]>(
     GROUPS.filter((g) =>
       g.ids.some((id) => initialIds.includes(String(id)))
     ).map((g) => g.key)
   );
-
-  const plan = subscription; // "fusion" | "lunar" | "nova"
-  const [saving, startSave] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
-
-  // danger zone states
-  const [statusBusy, setStatusBusy] = useState(false);
-  const [rxStatus, setRxStatus] = useState<"ACTIVE" | "DISABLED">(
-    (receiver?.status || "ACTIVE") as "ACTIVE" | "DISABLED"
-  );
-  const [resetBusy, setResetBusy] = useState(false);
-  const [newKey, setNewKey] = useState<string | null>(null);
-    const [newLicenseId, setNewLicenseId] = useState<string | null>(null);
-
-  const [deleteText, setDeleteText] = useState("");
-
   function toggleKey(key: string) {
     setSelectedKeys((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
   }
 
+  const plan = subscription;
+  const [saving, startSave] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
+
+  /* -------- Danger zone -------- */
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [rxStatus, setRxStatus] = useState<"ACTIVE" | "DISABLED">(
+    (receiver?.status || "ACTIVE") as "ACTIVE" | "DISABLED"
+  );
+  const [resetBusy, setResetBusy] = useState(false);
+  const [newKey, setNewKey] = useState<string | null>(null);
+  const [newLicenseId, setNewLicenseId] = useState<string | null>(null);
+
+  const [deleteText, setDeleteText] = useState("");
+
+  /* ---------------- SAVE ---------------- */
   async function saveAll() {
     setMessage(null);
     startSave(async () => {
       try {
-        // 1) rename via /rename
+        // 1) rename
         if ((receiver?.name || "") !== name.trim()) {
           const r = await fetch(
             `/api/receivers/${encodeURIComponent(rid)}/rename`,
@@ -194,22 +255,17 @@ export default function SettingsPanel({
           if (!r.ok) throw new Error("rename_failed");
         }
 
-        // 2) settings patch
-        const syms = symbols
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-
         // group-ids aus Auswahl
         const pickedIds = GROUPS.filter((g) =>
           selectedKeys.includes(g.key)
         ).flatMap((g) => g.ids);
 
         const patch = {
+          // NEWS: UI on/off → backend "window"/"off"
           news_policy: {
-            mode: newsMode,
-            before_sec: Number(newsBefore) || 0,
-            after_sec: Number(newsAfter) || 0,
+            mode: newsUiMode === "on" ? "window" : "off",
+            before_sec: Math.max(0, beforeMin) * 60,
+            after_sec: Math.max(0, afterMin) * 60,
           },
           position_limits: {
             max_open_total: Number(maxTotal) || 0,
@@ -217,7 +273,7 @@ export default function SettingsPanel({
             enabled: posEnabled,
           },
           allowed: {
-            symbols: syms,
+            symbols: selectedSymbols, // <— Checkbox Auswahl
             signal_sources: pickedIds,
           },
           trade_rules: {
@@ -257,14 +313,15 @@ export default function SettingsPanel({
     });
   }
 
+  /* -------- Status toggle now PATCH /settings -------- */
   async function onToggleStatus() {
     try {
       setStatusBusy(true);
       const next = rxStatus === "ACTIVE" ? "DISABLED" : "ACTIVE";
       const r = await fetch(
-        `/api/receivers/${encodeURIComponent(rid)}/status`,
+        `/api/receivers/${encodeURIComponent(rid)}/settings`,
         {
-          method: "POST",
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: next }),
         }
@@ -272,9 +329,12 @@ export default function SettingsPanel({
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d?.message || "status_failed");
       setRxStatus(next);
+      setMessage(
+        next === "DISABLED" ? "Receiver disabled." : "Receiver activated."
+      );
       router.refresh();
-    } catch {
-      // optional: toast
+    } catch (e) {
+      setMessage("Could not update status.");
     } finally {
       setStatusBusy(false);
     }
@@ -291,10 +351,10 @@ export default function SettingsPanel({
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d?.message || "reset_failed");
       setNewKey(d?.license?.key || null);
-      setNewLicenseId(d?.license?.license_id || null)
+      setNewLicenseId(d?.license?.license_id || null);
       router.refresh();
     } catch {
-      // optional: toast
+      /* noop */
     } finally {
       setResetBusy(false);
     }
@@ -310,16 +370,15 @@ export default function SettingsPanel({
       if (!r.ok) throw new Error(d?.message || "delete_failed");
       router.push("/receivers");
     } catch {
-      // optional: toast
+      /* noop */
     }
   }
 
   return (
     <div className="space-y-6 w-full">
-      {/* Account-Info (oben links) */}
+      {/* Account-Info */}
       <Card>
         {(() => {
-          // Snapshot-Form robust auslesen
           const acc = (account as any)?.account ?? account ?? {};
           const trd = (account as any)?.trading ?? {};
           const ccy = acc?.currency;
@@ -332,6 +391,7 @@ export default function SettingsPanel({
           const online = lastSeen
             ? Date.now() - lastSeen.getTime() < 5 * 60_000
             : false;
+
           const licenseStatus = (
             receiver?.license?.status || ""
           ).toUpperCase() as "ACTIVE" | "DISABLED" | "EXPIRED" | "";
@@ -344,7 +404,6 @@ export default function SettingsPanel({
 
           return (
             <div className="flex items-start justify-between gap-6">
-              {/* left */}
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="text-white font-semibold truncate">
@@ -394,7 +453,6 @@ export default function SettingsPanel({
                 )}
               </div>
 
-              {/* right */}
               <div className="text-right">
                 <div className="text-white font-medium">
                   {balance != null ? fmtMoney(balance, ccy || "USD") : "—"}
@@ -456,37 +514,60 @@ export default function SettingsPanel({
         {/* News filter */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="md:col-span-1">
-            <label className="block text-xs text-gray-400 mb-1">
-              News filter
-            </label>
+            <label className="block text-xs text-gray-400 mb-1">News</label>
             <select
-              value={newsMode}
-              onChange={(e) => setNewsMode(e.target.value)}
+              value={newsUiMode}
+              onChange={(e) =>
+                setNewsUiMode(e.target.value === "on" ? "on" : "off")
+              }
               className="w-full rounded-md bg-[#0f1115] border border-gray-700 px-3 py-2 text-white"
             >
-              <option value="window">window</option>
+              <option value="on">on</option>
               <option value="off">off</option>
             </select>
           </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">
-              Before (sec)
-            </label>
-            <input
-              value={newsBefore}
-              onChange={(e) => setNewsBefore(e.target.value)}
-              className="w-full rounded-md bg-[#0f1115] border border-gray-700 px-3 py-2 text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">
-              After (sec)
-            </label>
-            <input
-              value={newsAfter}
-              onChange={(e) => setNewsAfter(e.target.value)}
-              className="w-full rounded-md bg-[#0f1115] border border-gray-700 px-3 py-2 text-white"
-            />
+
+          {/* Window slider: Before (left grows left), center label, After (right grows right) */}
+          <div className="md:col-span-3">
+            <div className="rounded-md border border-gray-700 bg-[#0f1115] px-3 py-2">
+              <div className="flex items-center justify-between text-[11px] text-gray-400">
+                <span>Before: {beforeMin}m</span>
+                <span className="text-gray-300 font-medium">NEWS</span>
+                <span>After: {afterMin}m</span>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-3 items-center">
+                {/* BEFORE: mirrored slider (left = more) */}
+                <input
+                  type="range"
+                  min={0}
+                  max={NEWS_MAX_MIN}
+                  value={NEWS_MAX_MIN - beforeMin}
+                  onChange={(e) =>
+                    setNewsBefore(
+                      String(
+                        (NEWS_MAX_MIN - e.currentTarget.valueAsNumber) * 60
+                      )
+                    )
+                  }
+                  className="w-full h-2 rounded-lg appearance-none bg-white/10 outline-none [transform:scaleX(-1)]"
+                />
+                {/* AFTER: normal slider */}
+                <input
+                  type="range"
+                  min={0}
+                  max={NEWS_MAX_MIN}
+                  value={afterMin}
+                  onChange={(e) =>
+                    setNewsAfter(String(e.currentTarget.valueAsNumber * 60))
+                  }
+                  className="w-full h-2 rounded-lg appearance-none bg-white/10 outline-none"
+                />
+              </div>
+              <div className="mt-2 text-[11px] text-gray-500">
+                Trades werden {beforeMin}m vor und {afterMin}m nach News
+                blockiert (wenn aktiv).
+              </div>
+            </div>
           </div>
         </div>
 
@@ -522,17 +603,72 @@ export default function SettingsPanel({
           </div>
         </div>
 
-        {/* Symbols */}
+        {/* Symbols: checkbox grid + add */}
         <div className="mt-5">
-          <label className="block text-xs text-gray-400 mb-1">
-            Symbols (comma separated)
+          <label className="block text-xs text-gray-400 mb-2">
+            Symbols (select or add your own)
           </label>
-          <input
-            value={symbols}
-            onChange={(e) => setSymbols(e.target.value)}
-            className="w-full rounded-md bg-[#0f1115] border border-gray-700 px-3 py-2 text-white"
-            placeholder="XAUUSD,EURUSD,BTCUSD"
-          />
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+            {availableSymbols.map((sym) => {
+              const checked = selectedSymbols.includes(sym);
+              return (
+                <label
+                  key={sym}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md border px-2 py-1 text-sm",
+                    checked
+                      ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
+                      : "border-gray-700 bg-[#0f1115] text-gray-200 hover:border-gray-600"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={checked}
+                    onChange={() => toggleSymbol(sym)}
+                  />
+                  <span
+                    className={cn(
+                      "h-4 w-4 rounded-md ring-1 ring-gray-600 bg-gray-800 flex items-center justify-center",
+                      checked && "bg-indigo-500 ring-indigo-500"
+                    )}
+                  >
+                    <CheckIcon
+                      className={cn(
+                        "h-3.5 w-3.5 text-white transition-opacity",
+                        checked ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </span>
+                  <span className="truncate">{sym}</span>
+                </label>
+              );
+            })}
+          </div>
+
+          {/* <div className="mt-3 flex items-center gap-2">
+            <input
+              value={newSymbol}
+              onChange={(e) => setNewSymbol(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addSymbol();
+                }
+              }}
+              className="w-48 rounded-md bg-[#0f1115] border border-gray-700 px-3 py-2 text-white"
+              placeholder="Add symbol (e.g. USDJPY)"
+            />
+            <button
+              type="button"
+              onClick={addSymbol}
+              className="inline-flex items-center gap-2 rounded-md bg-slate-600/60 hover:bg-slate-600 px-3 py-2 text-sm font-medium text-white"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Add
+            </button>
+          </div> */}
         </div>
       </Card>
 
@@ -544,14 +680,14 @@ export default function SettingsPanel({
         />
         <div className="space-y-3">
           {GROUPS.map((g) => {
-            const allowed = canUse(plan, g);
+            const allowedPlan = canUse(plan, g);
             const checked = selectedKeys.includes(g.key);
             return (
               <label
                 key={g.key}
                 className={cn(
                   "flex items-start gap-3 rounded-md border px-3 py-3",
-                  allowed
+                  allowedPlan
                     ? "border-gray-700 hover:border-gray-600 bg-[#0f1115]"
                     : "border-gray-800 bg-[#0b0d10] opacity-60 cursor-not-allowed"
                 )}
@@ -560,8 +696,8 @@ export default function SettingsPanel({
                   type="checkbox"
                   className="sr-only peer"
                   checked={checked}
-                  onChange={() => allowed && toggleKey(g.key)}
-                  disabled={!allowed}
+                  onChange={() => allowedPlan && toggleKey(g.key)}
+                  disabled={!allowedPlan}
                 />
                 <span
                   className={cn(
@@ -583,16 +719,13 @@ export default function SettingsPanel({
                         {g.badge}
                       </span>
                     )}
-                    {!allowed && (
+                    {!allowedPlan && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700/50 text-gray-300">
                         Not available on your plan
                       </span>
                     )}
                   </div>
                   <div className="text-xs text-gray-400 mt-0.5">{g.desc}</div>
-                  {/* <div className="text-[11px] text-gray-500 mt-1">
-                    Source: {g.source} · IDs: {g.ids.join(", ")}
-                  </div> */}
                 </div>
               </label>
             );
@@ -750,7 +883,7 @@ export default function SettingsPanel({
         </div>
       </Card>
 
-      {/* Save button */}
+      {/* Save */}
       <div className="flex items-center gap-3">
         <button
           onClick={saveAll}
@@ -865,6 +998,8 @@ export default function SettingsPanel({
     </div>
   );
 }
+
+/* ----------------------------- UI bits ----------------------------- */
 
 function SectionTitle({
   title,
