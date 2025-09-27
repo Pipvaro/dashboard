@@ -564,8 +564,8 @@ export default function SettingsPanel({
                 />
               </div>
               <div className="mt-2 text-[11px] text-gray-500">
-                Trades werden {beforeMin}m vor und {afterMin}m nach News
-                blockiert (wenn aktiv).
+                Trades will be {beforeMin}m before and {afterMin}m after news
+                blocked (if active).
               </div>
             </div>
           </div>
