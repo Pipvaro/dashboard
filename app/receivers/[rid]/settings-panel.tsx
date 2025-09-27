@@ -167,6 +167,8 @@ export default function SettingsPanel({
   );
   const [resetBusy, setResetBusy] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+    const [newLicenseId, setNewLicenseId] = useState<string | null>(null);
+
   const [deleteText, setDeleteText] = useState("");
 
   function toggleKey(key: string) {
@@ -289,6 +291,7 @@ export default function SettingsPanel({
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d?.message || "reset_failed");
       setNewKey(d?.license?.key || null);
+      setNewLicenseId(d?.license?.license_id || null)
       router.refresh();
     } catch {
       // optional: toast
@@ -409,8 +412,8 @@ export default function SettingsPanel({
                         licenseStatus === "ACTIVE"
                           ? "green"
                           : licenseStatus === "DISABLED"
-                          ? "rose"
-                          : "amber"
+                            ? "rose"
+                            : "amber"
                       }
                     >
                       License {licenseStatus}
@@ -790,8 +793,8 @@ export default function SettingsPanel({
             {statusBusy
               ? "Working..."
               : rxStatus === "ACTIVE"
-              ? "Disable receiver"
-              : "Activate receiver"}
+                ? "Disable receiver"
+                : "Activate receiver"}
           </button>
         </div>
 
@@ -803,9 +806,20 @@ export default function SettingsPanel({
               Reset the license key. The EA must be updated with the new key.
             </div>
             {newKey && (
-              <div className="mt-1 text-[11px] text-indigo-300 break-all">
-                New key: <span className="text-white/90">{newKey}</span>
-              </div>
+              <>
+                <div className="mt-2 text-[11px] text-indigo-300 break-all">
+                  License ID:{" "}
+                  <span className="text-white/90 hover:text-indigo-300">
+                    {newLicenseId}
+                  </span>
+                </div>
+                <div className="mt-2 text-[11px] text-indigo-300 break-all">
+                  License KEY:{" "}
+                  <span className="text-white/90 hover:text-indigo-300">
+                    {newKey}
+                  </span>
+                </div>
+              </>
             )}
           </div>
           <button
